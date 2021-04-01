@@ -1,4 +1,5 @@
 import requests
+import urllib.parse
 
 def json_extract(obj, key):
     """Recursively fetch values from nested JSON."""
@@ -20,13 +21,18 @@ def json_extract(obj, key):
     values = extract(obj, arr, key)
     return values
 
+def payload_constructor(base_url,params):
+    #TODO: exception handling for params as dict
 
-def rxclass_getclassmember_url_maker(ClassID, relation, tty = ['IN']):
+    params_str = urllib.parse.urlencode(params, safe=':+')
+    payload = {'base_url':base_url,
+                'params':params_str}
+
+    return payload
+
+
+def rxclass_getclassmember_payload(ClassID, relation, ttys = ['IN','PIN']):
     """Generates and returns URLs as strings for hitting the RxClass API function GetClassMembers."""
-
-    base_url = 'https://rxnav.nlm.nih.gov/REST/rxclass/classMembers.json?'
-    
-    classid_string = 'classId=' + ClassID
 
 #TODO: If relaSource is VA or RXNORM, specify ttys as one or more of: SCD, SBD, GPCK, BPCK. The default TTYs do not intersect VA or RXNORM classes.
     relation_source_switcher = {
@@ -65,32 +71,26 @@ def rxclass_getclassmember_url_maker(ClassID, relation, tty = ['IN']):
     if relation not in list(relation_source_switcher.keys()):
         raise ValueError("results: relation must be one of %r." % list(relation_source_switcher.keys()))
 
-    relation_source_string  = '&relaSource=' + relation_source_switcher.get(relation)
-    
+
+    param_dict = {'classId':ClassID,
+                  'relaSource':relation_source_switcher.get(relation),
+                  'ttys':'+'.join(ttys)}
 
     #Does not send rela parameter on data sources with single rela, see RxClass API documentation
-    if relation in ['MESH','ATC']:
-        relation_string = ''
-    else:
-        relation_string = '&rela=' + relation
-
-
-    #converts list of ttys into paremeter for API call, see RxClass API documentation
-    for x in tty:
-        tty_string = x + '+'
+    if relation not in ['MESH','ATC']:
+        param_dict['rela'] = relation 
     
-    tty_string = tty_string[0:len(tty_string)-1]
-    tty_string = '&ttys=' + tty_string
+    payload = payload_constructor('https://rxnav.nlm.nih.gov/REST/rxclass/classMembers.json?', param_dict)
+
+    return payload
 
 
-    final_url = base_url + classid_string + relation_source_string + relation_string + tty_string
-
-    return final_url
-
-
-def rxapi_get_requestor(URL_string):
+def rxapi_get_requestor(request_dict):
     """Sends a GET request to either RxNorm or RxClass"""
-    response = requests.get(URL_string)
+    response = requests.get(request_dict['base_url'],params=request_dict['params'])
 
     #TODO: Add execption handling that can manage 200 responses with no JSON
     return response.json()
+
+#Test call below:
+#rxapi_get_requestor(rxclass_getclassmember_payload('D007037','may_treat'))
