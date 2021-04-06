@@ -58,19 +58,19 @@ z = zip_downloader('https://www.meps.ahrq.gov/mepsweb/data_files/pufs/h206adat.z
 
 #TODO:-1 from all colspecs data since python starts a 0 and r starts at 1
 col_names=['DUID', 'PID', 'DUPERSID', 'DRUGIDX', 'RXRECIDX', 'LINKIDX','PANEL', 'PURCHRD', 'RXBEGMM', 'RXBEGYRX', 'RXNAME',
-    'RXDRGNAM', 'RXNDC', 'RXQUANTY', 'RXFORM', 'RXFRMUNT','RXSTRENG', 'RXSTRUNT', 'RXDAYSUP', 'PHARTP1', 'PHARTP2',
-    'PHARTP3', 'PHARTP4', 'PHARTP5', 'PHARTP6', 'PHARTP7','PHARTP8', 'PHARTP9', 'RXFLG', 'IMPFLAG', 'PCIMPFLG',
-    'DIABEQUIP', 'INPCFLG', 'PREGCAT', 'TC1', 'TC1S1','TC1S1_1', 'TC1S1_2', 'TC1S2', 'TC1S2_1', 'TC1S3',
-    'TC1S3_1', 'TC2', 'TC2S1', 'TC2S1_1', 'TC2S1_2', 'TC2S2','TC3', 'TC3S1', 'TC3S1_1', 'RXSF18X', 'RXMR18X', 'RXMD18X',
-    'RXPV18X', 'RXVA18X', 'RXTR18X', 'RXOF18X', 'RXSL18X','RXWC18X', 'RXOT18X', 'RXOR18X', 'RXOU18X', 'RXXP18X',
-    'PERWT18F', 'VARSTR', 'VARPSU']
+            'RXDRGNAM', 'RXNDC', 'RXQUANTY', 'RXFORM', 'RXFRMUNT','RXSTRENG', 'RXSTRUNT', 'RXDAYSUP', 'PHARTP1', 'PHARTP2',
+            'PHARTP3', 'PHARTP4', 'PHARTP5', 'PHARTP6', 'PHARTP7','PHARTP8', 'PHARTP9', 'RXFLG', 'IMPFLAG', 'PCIMPFLG',
+            'DIABEQUIP', 'INPCFLG', 'PREGCAT', 'TC1', 'TC1S1','TC1S1_1', 'TC1S1_2', 'TC1S2', 'TC1S2_1', 'TC1S3',
+            'TC1S3_1', 'TC2', 'TC2S1', 'TC2S1_1', 'TC2S1_2', 'TC2S2','TC3', 'TC3S1', 'TC3S1_1', 'RXSF18X', 'RXMR18X', 'RXMD18X',
+            'RXPV18X', 'RXVA18X', 'RXTR18X', 'RXOF18X', 'RXSL18X','RXWC18X', 'RXOT18X', 'RXOR18X', 'RXOU18X', 'RXXP18X',
+            'PERWT18F', 'VARSTR', 'VARPSU']
 MEPS = pd.read_fwf(z.open('H206A.dat'),header=None,names=col_names,converters={col:str for col in col_names},
-    colspecs=[(0,6), (7,9), (10,19), (20,32), (33,51), (52,67), (68,69), (70,70), (71,73), (74,77), (78,127), (128,187), (188,198), (199,205),
-    (206,255), (256,305), (306,355), (356,405), (406,408), (409,411), (412,413), (414,415), (416,417), (418,419), (420,421), (422,423),
-    (424,425), (426,427), (428,428), (429,429), (430,430), (431,431), (432,432), (433,435), (436,438), (439,441), (442,444), (445,447),
-    (448,450), (451,453), (454,455), (456,457), (458,460), (461,464), (465,466), (467,469), (470,472), (473,475), (476,478), (479,481),
-    (482,489), (490,497), (498,505), (506,513), (514,521), (522,528), (529,535), (536,542), (543,549), (550,557), (558,565), (566,573),
-    (574,580), (581,593), (594,596), (597,None)])
+    colspecs=[(0,7),(7,10),(10,20),(20,33),(33,52),(52,68),(68,70),(70,71),(71,74),(74,78),(78,128),(128,188),(188,199),
+                (199,206),(206,256),(256,306),(306,356),(356,406),(406,409),(409,412),(412,414),(414,416),(416,418),(418,420),(420,422),
+                (422,424),(424,426),(426,428),(428,429),(429,430),(430,431),(431,432),(432,433),(433,436),(436,439),(439,442),(442,445),
+                (445,448),(448,451),(451,454),(454,456),(456,458),(458,461),(461,464),(464,467),(467,470),(470,473),(473,476),(476,479),
+                (479,482),(482,490),(490,498),(498,506),(506,514),(514,522),(522,529),(529,536),(536,543),(543,550),(550,558),(558,566),
+                (566,573),(573,581),(581,593),(593,597),(597,None)])
 
 sql_create_table('MEPS',MEPS)
 
