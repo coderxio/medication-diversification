@@ -21,6 +21,7 @@ def json_extract(obj, key):
     values = extract(obj, arr, key)
     return values
 
+
 def payload_constructor(base_url,params):
     #TODO: exception handling for params as dict
 
@@ -28,14 +29,16 @@ def payload_constructor(base_url,params):
     payload = {'base_url':base_url,
                 'params':params_str}
 
+    #debug print out
+    print("""payload built with base URL: {0} and parameters: {1}""".format(base_url,params_str))
+
     return payload
 
 
-def rxclass_getclassmember_payload(ClassID, relation, ttys = ['IN','PIN']):
+def rxclass_getclassmember_payload(class_id, relation, ttys = ['IN','MIN']):
     """Generates and returns URLs as strings for hitting the RxClass API function GetClassMembers."""
 
-#TODO: If relaSource is VA or RXNORM, specify ttys as one or more of: SCD, SBD, GPCK, BPCK. The default TTYs do not intersect VA or RXNORM classes.
-    relation_source_switcher = {
+    relation_dict = {
         'ATC':"ATC",
         'has_EPC':"DailyMed",
         'has_Chemical_Structure':"DailyMed",
@@ -68,12 +71,16 @@ def rxclass_getclassmember_payload(ClassID, relation, ttys = ['IN','PIN']):
         'has_VAClass_extended': "VA",
     }
 
-    if relation not in list(relation_source_switcher.keys()):
-        raise ValueError("results: relation must be one of %r." % list(relation_source_switcher.keys()))
+    if relation not in list(relation_dict.keys()):
+        raise ValueError("results: relation must be one of %r." % list(relation_dict.keys()))
+
+    #If relaSource is VA or RXNORM, specify ttys as one or more of: SCD, SBD, GPCK, BPCK. The default TTYs do not intersect VA or RXNORM classes.
+    if relation_dict.get(relation) in ['VA','RXNORM']:
+        ttys = ttys.extend(['SCD','SBD','GPCK','BPCK'])
 
 
-    param_dict = {'classId':ClassID,
-                  'relaSource':relation_source_switcher.get(relation),
+    param_dict = {'classId':class_id,
+                  'relaSource':relation_dict.get(relation),
                   'ttys':'+'.join(ttys)}
 
     #Does not send rela parameter on data sources with single rela, see RxClass API documentation
@@ -89,8 +96,17 @@ def rxapi_get_requestor(request_dict):
     """Sends a GET request to either RxNorm or RxClass"""
     response = requests.get(request_dict['base_url'],params=request_dict['params'])
 
+    #debug print out
+    print("GET Request sent to URL: {0}".format(response.url))
+    print("Response HTTP Code: {0}".format(response.status_code))
+    if response.status_code == 200:
+        print("Response json: {0}".format(response.json()))
     #TODO: Add execption handling that can manage 200 responses with no JSON
+
     return response.json()
 
 #Test call below:
-#rxapi_get_requestor(rxclass_getclassmember_payload('D007037','may_treat'))
+api_json = rxapi_get_requestor(rxclass_getclassmember_payload('D007037','may_treat'))
+
+rxcui_list = json_extract(api_json, 'rxcui')
+print('list of RXCUI returned from RxClass Call: {0}'.format(rxcui_list))
