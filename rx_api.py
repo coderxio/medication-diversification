@@ -1,5 +1,9 @@
 import requests
 import urllib.parse
+import pandas as pd
+import sqlite3 as sql
+
+from mdt_functions import db_query
 
 def json_extract(obj, key):
     """Recursively fetch values from nested JSON."""
@@ -100,13 +104,36 @@ def rxapi_get_requestor(request_dict):
     print("GET Request sent to URL: {0}".format(response.url))
     print("Response HTTP Code: {0}".format(response.status_code))
     if response.status_code == 200:
-        print("Response json: {0}".format(response.json()))
     #TODO: Add execption handling that can manage 200 responses with no JSON
+        return response.json()
 
-    return response.json()
+
+#TODO: add loop to flip through search lists and combine them into final list
+def searcher(search_list):
+    """loops through a list of tuples and join resulting RXCUIs lists in a list"""
+    rxcui_list = []
+    for x in search_list:
+       api_response = rxapi_get_requestor(rxclass_getclassmember_payload(x[0],x[1]))
+       return_rxcui = json_extract(api_response,'rxcui')
+       rxcui_list.append(return_rxcui)
+  
+    return rxcui_list
+
+
+#TODO: Add option to string search doseage form
+def rxcui_ndc_matcher(rxcui_list):
+    """mashes list of RxCUIs against RxNorm combined table to get matching NDCs"""
+
+    df = db_query('SELECT * FROM rxcui_ndc')
+    filtered_df = df[df['medication_ingredient_rxcui'].isin(rxcui_list) | df['medication_product_rxcui'].isin(rxcui_list)]
+    
+    print("RXCUI list matched on {0} NDCs and dataframe was copied to clipboard".format(filtered_df['medication_ndc'].count()))
+    filtered_df.to_clipboard(index=False,excel=True)
+    
+    return filtered_df
 
 #Test call below:
-api_json = rxapi_get_requestor(rxclass_getclassmember_payload('D007037','may_treat'))
-
-rxcui_list = json_extract(api_json, 'rxcui')
-print('list of RXCUI returned from RxClass Call: {0}'.format(rxcui_list))
+rxclass_response = rxapi_get_requestor(rxclass_getclassmember_payload('D001249','may_prevent'))
+rxcui_list = json_extract(rxclass_response, 'rxcui')
+rxcui_ndc_match = rxcui_ndc_matcher(rxcui_list)
+#print('list of RXCUI returned from searcher: {0}'.format(rxcui_list))
