@@ -1,0 +1,192 @@
+import numpy as np
+from mdt_functions import sql_create_table, db_query
+
+#TODO: Need RxClass-RxCUI mapping, and (ideally) map RxClass to Synthea module names?
+ingred_prod_ndc= 'rxcui_ndc'
+disease_class = 'thyroid' #this is a placeholder for RxClass 
+drug_category_prescribe_level = ['ingred_name', 'ingred_product']
+year = '18'
+
+#Using medication_ingredient, dosage form, and strength (pulled from the product_name) RxCUIs, create a distribution of medications across a therapeutic class that is segmented by age, gender, and state.
+#Can adjust distribution creator parameters to segment based on product_name RxCUI instead -- to get brand vs generic. 
+#SQLite does not have REGEX, so used multiple REPLACE functions to remove non-numerical characters.
+#"Sex" assignments are from MEPS, source: https://meps.ahrq.gov/mepsweb/data_stats/download_data_files_codebook.jsp?PUFId=PROJYR15&varName=SEX 
+#Age buckets may be recategorized.
+
+drug_distrib_dict = {}
+
+for prescribe_level in drug_category_prescribe_level: 
+    drug_distrib_dict[prescribe_level] = db_query(f"""
+    WITH meps_rxcui AS 
+    (SELECT DISTINCT 
+    t1.medication_ingredient_rxcui, 
+    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(t1.medication_ingredient_name, '/', '_'), '-', '_'), ' ', ''), '(', '_'), ')', ''), '.', ''), ',', '') AS medication_ingredient_name, 
+    t1.dose_form_rxcui,
+    t1.dose_form_name,
+    t1.medication_product_rxcui, 
+    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(t1.medication_product_name, '/', '_'), '-', '_'), ' ', '_'), '(', ''), ')', ''), '.', '_'), ',', ''), ']', ''), '[', '') AS medication_product_name, 
+    t2.dupersid,
+    t2.perwt{year}f AS pt_weight,
+    CASE WHEN t3.sex = 1 THEN 'M' 
+    WHEN t3.sex = 2 THEN 'F'
+    END AS gender, 
+    CASE WHEN t3.agelast < 4 THEN 'Under4'
+    WHEN t3.agelast BETWEEN 4 AND 7 THEN '4-7'
+    WHEN t3.agelast BETWEEN 8 AND 11 THEN '8-11'
+    WHEN t3.agelast BETWEEN 12 AND 18 THEN '12-18'
+    WHEN t3.agelast BETWEEN 19 AND 49 THEN '19-49'
+    WHEN t3.agelast BETWEEN 50 AND 64 THEN '50-64'
+    WHEN t3.agelast >= 65 THEN '65up'
+    END AS age,
+    t4.states AS state
+    FROM {ingred_prod_ndc} AS t1
+    INNER JOIN meps_prescribedmeds AS t2
+    ON t1.medication_ndc = t2.rxndc
+    INNER JOIN meps_patientdemographics AS t3
+    ON t2.dupersid = t3.dupersid
+    INNER JOIN meps_region_states AS t4
+    ON t3.region{year} = t4.region_value
+    )
+
+    , patient_count_ingred_name AS
+    (SELECT DISTINCT
+    medication_ingredient_name,
+    medication_ingredient_rxcui,
+    gender,
+    age,
+    state,
+    pt_weight,
+    COUNT(DISTINCT dupersid) AS patient_count
+    FROM meps_rxcui
+    GROUP BY 1, 2, 3, 4, 5, 6
+    )
+    
+    , patient_count_product AS
+    (SELECT DISTINCT
+    medication_product_name,
+    medication_product_rxcui,
+    medication_ingredient_name,
+    medication_ingredient_rxcui,
+    gender,
+    age,
+    state,
+    pt_weight,
+    COUNT(DISTINCT dupersid) AS patient_count
+    FROM meps_rxcui
+    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+    )
+    
+    , weighted_patient_count_ingred_name AS
+    (SELECT DISTINCT
+    medication_ingredient_name,
+    medication_ingredient_rxcui,
+    gender,
+    age,
+    state,
+    SUM(patient_count*pt_weight) AS weighted_patient_count
+    FROM patient_count_ingred_name
+    GROUP BY 1, 2, 3, 4, 5
+    )
+    
+    , weighted_patient_count_product AS
+    (SELECT DISTINCT
+    medication_product_name,
+    medication_product_rxcui,
+    medication_ingredient_name,
+    medication_ingredient_rxcui,
+    gender,
+    age,
+    state,
+    SUM(patient_count*pt_weight) AS weighted_patient_count
+    FROM patient_count_product
+    GROUP BY 1, 2, 3, 4, 5, 6, 7
+    )
+    
+    --need to join to RxClass to filter by disease_class
+    , patients_by_demographics_ingred_name AS  
+    (SELECT DISTINCT *,
+     demog_ingred_name_patients/total_ingred_name_patients*100 AS percent_ingred_name_patients
+    FROM (
+    SELECT DISTINCT CAST('{disease_class}' AS string) AS disease_class, age, gender, state, 
+    medication_ingredient_name,
+    'prescribe_' || medication_ingredient_name AS ingred_name_category,
+    SUM(weighted_patient_count) OVER (PARTITION BY age, gender, state, medication_ingredient_name) AS demog_ingred_name_patients,
+    SUM(weighted_patient_count) OVER (PARTITION BY age, gender, state) AS total_ingred_name_patients
+    FROM weighted_patient_count_ingred_name
+    )
+    )
+    
+    --need to join to RxClass to filter by disease_class
+    , patients_by_demographics_product AS  
+    (SELECT DISTINCT *
+    --, demog_product_patients/total_product_patients*100 AS percent_ingred_product_patients --> doesn't work because sum(%) > 100
+    FROM (
+    SELECT DISTINCT CAST('{disease_class}' AS string) AS disease_class, age, gender, state, 
+    medication_ingredient_name,
+    'prescribe_' || medication_product_name AS ingred_product_category,
+    SUM(weighted_patient_count) OVER (PARTITION BY age, gender, state, medication_product_name) AS demog_product_patients
+    FROM weighted_patient_count_product
+    ) 
+    )
+    
+    SELECT *, demog_product_patients/total_product_patients*100 AS percent_ingred_product_patients
+    FROM (
+    SELECT DISTINCT t1.*, t2.ingred_product_category, t2.demog_product_patients,
+    --t2.demog_product_patients/t1.demog_ingred_name_patients*100 AS percent_ingred_product_patients,  --> doesn't work because sum(%) > 100
+    SUM(t2.demog_product_patients) OVER (PARTITION BY t1.age, t1.gender, t1.state, t1.medication_ingredient_name) AS total_product_patients
+    FROM patients_by_demographics_ingred_name AS t1
+    INNER JOIN patients_by_demographics_product AS t2
+    ON t1.age = t2.age
+    AND t1.gender = t2.gender
+    AND t1.state = t2.state
+    AND t1.medication_ingredient_name = t2.medication_ingredient_name)
+    WHERE percent_ingred_product_patients > 0
+    """)
+   
+    sql_create_table(prescribe_level+'_distrib',drug_distrib_dict[prescribe_level])
+
+    #Create a list of all ingredient prescribe categories (e.g., levothyroxine 0.025 oral tab, 0.05 oral cap, 0.05 oral tab) for the prescribe transitions
+    ingred_prescribe_categories = db_query(f"""
+    SELECT DISTINCT {prescribe_level}_category
+    FROM {prescribe_level}_distrib
+    """)
+    
+    ingred_prescribe_category_list = ingred_prescribe_categories[prescribe_level+'_category'].unique().tolist()
+    
+    #Create SQL query for all ingredient prescribe cateogires 
+    sql_query_table_list = []
+    sql_query_list = []
+    table_count = 2
+
+    for ingred_prescribe_cat in np.unique(np.array(ingred_prescribe_category_list)):
+        sql_query_table_list.append('t'+str(table_count)+"."+ingred_prescribe_cat)
+        sql_query_list.append("LEFT JOIN (SELECT DISTINCT age, gender, state, IFNULL(percent_"+prescribe_level+"_patients, 0) AS "+ingred_prescribe_cat+
+                          " FROM "+prescribe_level+"_distrib WHERE "+prescribe_level+"_category LIKE'%"+ingred_prescribe_cat+"%') AS t"+str(table_count)+
+                          " ON t1.age = t"+str(table_count)+".age AND t1.gender = t"+str(table_count)+".gender AND t1.state = t"+str(table_count)+".state")
+        table_count += 1
+
+    sql_query_table_string = ', '.join(sql_query_table_list)
+    sql_query_string = ' '.join(sql_query_list)
+
+    distrib = db_query(f"""
+                SELECT DISTINCT t1.age, t1.gender, t1.state, {sql_query_table_string}
+                FROM {prescribe_level}_distrib AS t1 
+                {sql_query_string}
+                """)
+        
+    if prescribe_level == 'ingred_name':
+        #Fill NULLs and save as CSV
+        distrib.fillna(0, inplace=True)
+        distrib.to_csv(disease_class+'_'+prescribe_level+'_distrib.csv', index = False)
+        
+        ingred_name_list = [ingred_prescribe_cat for ingred_prescribe_cat in np.unique(np.array(ingred_prescribe_category_list))]
+        
+#TODO 1: Fix the distriubtions so that sum(%) = 100%
+#TODO 2: Write dataframes to Google Drive, or other format suitable for next step of MDT pipeline
+
+    else:
+        #Fill NULLs and save as CSV
+        for ingred_name in ingred_name_list:
+            distrib.fillna(0, inplace=True)
+            distrib.loc[:, (distrib.columns.str.startswith(ingred_name) | distrib.columns.str.startswith('age') | distrib.columns.str.startswith('gender') | distrib.columns.str.startswith('state'))].to_csv(disease_class+'_'+prescribe_level+'_'+ingred_name+'_distrib.csv', index = False)
+    
