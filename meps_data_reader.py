@@ -26,7 +26,7 @@ meps_demographics = pd.read_fwf(z.open('h209.dat'),header=None,names=d_col_names
     colspecs=d_col_spaces
     ,usecols=['DUPERSID', 'PERWT18F', "REGION18", 'SEX', 'AGE18X'])
 #removing numbers from meps_demographic column names, since the '18' in region18 and perwt18f in MEPS are year-specific
-meps_demographics.columns = meps_demographics.columns.str.replace('\d+', '',regex=True)
+meps_demographics.columns = meps_demographics.columns.str.replace(r'\d+', '',regex=True)
 sql_create_table('meps_demographics',meps_demographics)
 del meps_demographics
 del z
