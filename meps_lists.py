@@ -1,3 +1,17 @@
+meps_region = pd.DataFrame({'Region_Value': [1, 2, 3, 4], 
+              'Region_Label': ['Northeast', 'Midwest', 'South', 'West'],
+              'States': [['Connecticut', 'Maine', 'Massachusetts', 'New Hampshire', 'New Jersey',
+                        'New York', 'Pennsylvania', 'Rhode Island', 'Vermont'],
+                        ['Indiana', 'Illinois', 'Iowa', 'Kansas', 'Michigan', 'Minnesota', 'Missouri',
+                        'Nebraska', 'North Dakota', 'Ohio', 'South Dakota', 'Wisconsin'],
+                        ['Alabama', 'Arkansas', 'Delaware', 'District of Columbia', 'Florida',
+                        'Georgia', 'Kentucky', 'Louisiana', 'Maryland', 'Mississippi', 'North Carolina', 'Oklahoma', 'South Carolina', 'Tennessee', 'Texas', 'Virginia',
+                        'West Virginia'],
+                        ['Alaska', 'Arizona', 'California', 'Colorado', 'Hawaii', 'Idaho', 'Montana',
+                        'Nevada', 'New Mexico', 'Oregon', 'Utah', 'Washington', 'Wyoming']]
+                }).set_index(['Region_Value'])['States'].apply(pd.Series).stack().reset_index(level=1, drop=True).reset_index().rename(columns={0:'States'})
+
+
 d_col_names=["DUID", "PID", "DUPERSID", "PANEL", "FAMID31", "FAMID42",
     "FAMID53", "FAMID18", "FAMIDYR", "CPSFAMID", "FCSZ1231",
     "FCRP1231", "RULETR31", "RULETR42", "RULETR53", "RULETR18",
