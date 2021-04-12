@@ -1,3 +1,5 @@
+import pandas as pd 
+
 d_col_names=["DUID", "PID", "DUPERSID", "PANEL", "FAMID31", "FAMID42",
     "FAMID53", "FAMID18", "FAMIDYR", "CPSFAMID", "FCSZ1231",
     "FCRP1231", "RULETR31", "RULETR42", "RULETR53", "RULETR18",
@@ -363,3 +365,17 @@ p_col_spaces = [(0,7),(7,10),(10,20),(20,33),(33,52),(52,68),(68,70),(70,71),(71
                 (445,448),(448,451),(451,454),(454,456),(456,458),(458,461),(461,464),(464,467),(467,470),(470,473),(473,476),(476,479),
                 (479,482),(482,490),(490,498),(498,506),(506,514),(514,522),(522,529),(529,536),(536,543),(543,550),(550,558),(558,566),
                 (566,573),(573,581),(581,593),(593,597),(597,None)]
+
+#Source: https://www.meps.ahrq.gov/survey_comp/hc_technical_notes.shtml
+meps_region_states = pd.DataFrame({'region_value': [1, 2, 3, 4], 
+              'region_label': ['Northeast', 'Midwest', 'South', 'West'],
+              'states': [['Connecticut', 'Maine', 'Massachusetts', 'New Hampshire', 'New Jersey',
+                        'New York', 'Pennsylvania', 'Rhode Island', 'Vermont'],
+                        ['Indiana', 'Illinois', 'Iowa', 'Kansas', 'Michigan', 'Minnesota', 'Missouri',
+                        'Nebraska', 'North Dakota', 'Ohio', 'South Dakota', 'Wisconsin'],
+                        ['Alabama', 'Arkansas', 'Delaware', 'District of Columbia', 'Florida',
+                        'Georgia', 'Kentucky', 'Louisiana', 'Maryland', 'Mississippi', 'North Carolina', 'Oklahoma', 'South Carolina', 'Tennessee', 'Texas', 'Virginia',
+                        'West Virginia'],
+                        ['Alaska', 'Arizona', 'California', 'Colorado', 'Hawaii', 'Idaho', 'Montana',
+                        'Nevada', 'New Mexico', 'Oregon', 'Utah', 'Washington', 'Wyoming']]
+                }).set_index(['region_value'])['states'].apply(pd.Series).stack().reset_index(level=1, drop=True).reset_index().rename(columns={0:'states'})

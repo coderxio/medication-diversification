@@ -2,7 +2,7 @@
 import requests, zipfile, io
 import pandas as pd
 import sqlite3 as sql
-
+import json
 
 def sql_create_table(table_name, df, conn=None, delete_df=True):
     """Creates a table in the connected database when passed a pandas dataframe. 
@@ -53,3 +53,16 @@ def read_sql_string(file_name):
     print('Read {0} file as string'.format(file_name))
 
     return query_str
+
+def age_values(file_name):
+    """reads age_ranges JSON to create dataframe with age_values"""
+    
+    # Opening JSON file
+    f = open(file_name,)
+    
+    # returns JSON object as a dictionary
+    data = json.load(f)
+    data['age_values'] = [list(range(int(age.split('-')[0]), int(age.split('-')[1])+1)) for age in data['age_range']]
+    df = pd.DataFrame(data)
+    df = df.explode('age_values')
+    return df
