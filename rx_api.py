@@ -22,9 +22,6 @@ rxcui_ndc_match = rxcui_ndc_match.assign(
     + 1
 ).query('rn < 2').drop(columns=['rn'])
 
-
-#TODO: Pandas mugging similar to windows functions
-
 #saves df to csv
 output_df(rxcui_ndc_match)
 
