@@ -2,6 +2,9 @@
 import requests, zipfile, io
 import pandas as pd
 import sqlite3 as sql
+
+import json
+
 import urllib.parse
 
 
@@ -60,6 +63,20 @@ def read_sql_string(file_name):
     print('Read {0} file as string'.format(file_name))
 
     return query_str
+
+
+def age_values(file_name):
+    """reads age_ranges JSON to create dataframe with age_values"""
+    
+    # Opening JSON file
+    f = open(file_name,)
+    
+    # returns JSON object as a dictionary
+    data = json.load(f)
+    data['age_values'] = [list(range(int(age.split('-')[0]), int(age.split('-')[1])+1)) for age in data['age_range']]
+    df = pd.DataFrame(data)
+    df = df.explode('age_values')
+    return df
 
 
 
@@ -200,5 +217,3 @@ def output_df(df,output='csv',filename='df_output'):
         df.to_clipboard(index=False,excel=True)
     elif output == 'csv':
         df.to_csv('data/'+filename+'.csv',index=False)
-
-        
