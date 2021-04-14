@@ -5,9 +5,9 @@ import sqlite3 as sql
 #imports functions for running making database
 from mdt_functions import zip_downloader, sql_create_table, db_query, read_sql_string
 
-from meps_lists import p_col_names, p_col_spaces, d_col_names, d_col_spaces, meps_region
+from meps_lists import p_col_names, p_col_spaces, d_col_names, d_col_spaces, meps_region_states
 
-from config_mdt import meps_year
+from mdt_config import meps_year
 
 #TODO: Mimic meps_r_package in python to make this cleaner and for obtaining more years worth of data.
 z = zip_downloader('https://www.meps.ahrq.gov/mepsweb/data_files/pufs/h206adat.zip')
@@ -26,13 +26,15 @@ z = zip_downloader('https://www.meps.ahrq.gov/mepsweb/data_files/pufs/h209dat.zi
 
 meps_demographics = pd.read_fwf(z.open('h209.dat'),header=None,names=d_col_names,converters={col:str for col in d_col_names},
     colspecs=d_col_spaces
-    ,usecols=['DUPERSID', 'PERWT18F', "REGION18", 'SEX', 'AGE18X'])
+    ,usecols=['DUPERSID', 'PERWT18F', "REGION18", 'SEX', 'AGELAST'])
 #removing numbers from meps_demographic column names, since the '18' in region18 and perwt18f in MEPS are year-specific
 meps_demographics.columns = meps_demographics.columns.str.replace(r'\d+', '',regex=True)
 sql_create_table('meps_demographics',meps_demographics)
 del meps_demographics
 del z
 
+sql_create_table('meps_region_states',meps_region_states)
+del meps_region_states
 
 
 #TODO: bring in to DB and Test
@@ -63,5 +65,5 @@ print('DB table meps_demographics has {0} records'.format(meps_demographics['rec
 #meps_reference = db_query("Select count(*) AS records meps_reference")
 #print('DB table meps_reference has {0} records'.format(meps_reference['records'].iloc[0]))
 
-meps_region = db_query("Select count(*) AS records from meps_region")
-print('DB table meps_region has {0} records'.format(meps_region['records'].iloc[0]))
+meps_region_states = db_query("Select count(*) AS records from meps_region_states")
+print('DB table meps_region_states has {0} records'.format(meps_region_states['records'].iloc[0]))

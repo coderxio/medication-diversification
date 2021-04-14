@@ -13,4 +13,4 @@ age_range_distrib = 'Y'
 state_distrib = 'Y'
 
 #For MEPS year-specific variables (region, person_weight, age)
-year = '18'
+meps_year = '18'
