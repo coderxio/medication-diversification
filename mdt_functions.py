@@ -9,7 +9,7 @@ import json
 
 import urllib.parse
 
-from mdt_config import *
+from mdt_config import demographic_distrib_flags
 from meps_lists import meps_region_states
 
 #data gathering and database functions
@@ -233,16 +233,18 @@ def get_distributions(rxcui_ndc_match, rxclass_sources):
 
     #Optional: Age range join - can be customized in the age_ranges.py or age_ranges.json file
     #groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state)
-    groupby_demographic_variables = ['gender'] 
-    if age_range_distrib == 'Y':
+    groupby_demographic_variables = []
+    for k, v in demographic_distrib_flags.items():
+        if v == 'Y':
+               groupby_demographic_variables.append(k)  
+        
+    if demographic_distrib_flags['age'] == 'Y':
         age_ranges = age_values('age_ranges.json')
         meps_rxcui = meps_rxcui.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
-        groupby_demographic_variables.append('age')
     #Optional: State-region mapping from MEPS 
-    if state_distrib == 'Y':
+    if demographic_distrib_flags['state'] == 'Y':
         meps_rxcui = meps_rxcui.merge(meps_region_states.astype(str), how='inner', left_on='region_num', right_on='region_value')
-        groupby_demographic_variables.append('state')
-    groupby_demographic_variables = sorted(groupby_demographic_variables)    
+
 
     #Clean text to JSON/SQL-friendly format 
     for col in meps_rxcui[['medication_ingredient_name', 'medication_product_name']]:
