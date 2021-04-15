@@ -7,7 +7,7 @@ SELECT DISTINCT
     CASE WHEN t2.sex = 1 THEN 'M' 
     WHEN t2.sex = 2 THEN 'F'
     END AS gender,
-    t2.agelast AS age, --patient's last known age; advantage of using this col over other age cols is every patient has age (no NULLs)
+    t2.agelast, --patient's last known age; advantage of using this col over other age cols is every patient has age (no NULLs)
     t2.region AS region_num
     FROM meps_prescription AS t1
     INNER JOIN meps_demographics AS t2

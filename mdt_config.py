@@ -1,6 +1,6 @@
 import json
 
-config = {"age_range": ["0-3", "4-7", "8-11", "12-18", "19-49", "50-64", "65-99"]
+config = {"age": ["0-3", "4-7", "8-11", "12-18", "19-49", "50-64", "65-99"]
          }
 
 with open('age_ranges.json', 'w') as f:
@@ -13,4 +13,4 @@ age_range_distrib = 'Y'
 state_distrib = 'Y'
 
 #For MEPS year-specific variables (region, person_weight, age)
-year = '18'
+meps_year = '18'
