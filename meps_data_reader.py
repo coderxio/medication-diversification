@@ -37,23 +37,10 @@ sql_create_table('meps_region_states',meps_region_states)
 del meps_region_states
 
 
-#TODO: bring in to DB and Test
-#meps_reference = db_query(f"""
-#SELECT DISTINCT 
-#    t1.dupersid,
-#    t1.perwt{meps_year}f AS person_weight,
-#    t1.rxndc,
-#    CASE WHEN t2.sex = 1 THEN 'M' 
-#    WHEN t2.sex = 2 THEN 'F'
-#    END AS gender,
-#    t2.agelast AS age, --patient's last known age; advantage of using this column is every patient is assigned an age (no NULLs)
-#    t2.region{meps_year} AS region_num
-#    FROM meps_prescription AS t1
-#    INNER JOIN meps_demographics AS t2
-#    ON t1.dupersid = t2.dupersid
-#""")
-#sql_create_table('meps_reference', meps_reference)
-#del meps_reference
+meps_reference_str = read_sql_string('meps_reference.sql')
+meps_reference = db_query(meps_reference_str)
+sql_create_table('meps_reference', meps_reference)
+del meps_reference
 
 #TEST!!!!!!!!!!!!!!!! reads record count from created database
 meps_prescription = db_query("Select count(*) AS records from meps_prescription")
@@ -62,8 +49,8 @@ print('DB table meps_prescription  has {0} records'.format(meps_prescription['re
 meps_demographics = db_query("Select count(*) AS records from meps_demographics")
 print('DB table meps_demographics has {0} records'.format(meps_demographics['records'].iloc[0]))
 
-#meps_reference = db_query("Select count(*) AS records meps_reference")
-#print('DB table meps_reference has {0} records'.format(meps_reference['records'].iloc[0]))
+meps_reference = db_query("Select count(*) AS records from meps_reference")
+print('DB table meps_reference has {0} records'.format(meps_reference['records'].iloc[0]))
 
 meps_region_states = db_query("Select count(*) AS records from meps_region_states")
 print('DB table meps_region_states has {0} records'.format(meps_region_states['records'].iloc[0]))
