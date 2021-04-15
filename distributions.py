@@ -58,7 +58,7 @@ dcp_df['weighted_patient_count_ingredient'] = dcp_df['person_weight'].astype(flo
 dcp_dict['patients_by_demographics_ingredient'] = dcp_df.groupby(['medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_ingredient'].sum()
 dcp_demographic_df = pd.DataFrame(dcp_dict['patients_by_demographics_ingredient']).reset_index()
 #4
-if groupby_demographic_variables == True:
+if len(groupby_demographic_variables) > 0:
     dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(groupby_demographic_variables)['weighted_patient_count_ingredient'].sum(), how = 'inner', left_on = groupby_demographic_variables, right_index=True, suffixes = ('_demographic', '_total'))
 else:
     dcp_demographictotal_df = dcp_demographic_df
@@ -70,7 +70,7 @@ dcp_demographictotal_df['percent_ingredient_patients'] = dcp_demographictotal_df
 dcp_demographictotal_df['medication_ingredient_name'] = 'prescribe_'+dcp_demographictotal_df['medication_ingredient_name']
 #7
 dcp_dict['percent_ingredient_patients'] = dcp_demographictotal_df
-if groupby_demographic_variables == True:
+if len(groupby_demographic_variables) > 0:
     dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'].pivot(index= groupby_demographic_variables, columns = 'medication_ingredient_name', values='percent_ingredient_patients').reset_index()
 else:
     dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'][['medication_ingredient_name', 'percent_ingredient_patients']].set_index('medication_ingredient_name').T
@@ -84,15 +84,13 @@ output_df(dcp_dict['percent_ingredient_patients'], output='csv',filename=disease
 """Numerator = product_name 
    Denominator = ingred_name
    Loop through all the ingredient_names to create product distributions by ingredient name
-   Same steps as above for Ingredient Name Distribution (1-7), but first filter medication_product_names for only those that startwith the medication_ingredient_name (Step 0) """
+   Same steps as above for Ingredient Name Distribution (1-7), but first filter medication_product_names for only those that have the same medication_ingredient_name (Step 0) """
 
 for ingred_name in medication_ingredient_list:
     #0
-    #TODO: Need to solve for how to handle combo drugs (e.g., fluticasone-salmeterol appears in fluticasone file, where fluticasone-only SUMs to 100% and fluticasone-salmeterol SUMs to 100%)
-    ingred_name = ingred_name.replace(r"[^a-zA-Z]", "")
-    meps_rxcui_ingred = meps_rxcui.loc[meps_rxcui['medication_ingredient_name'].str.startswith(ingred_name, na=False)]
+    meps_rxcui_ingred = meps_rxcui[meps_rxcui['medication_ingredient_name']==ingred_name][['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables]
     #1
-    dcp_dict['patient_count_product'] = meps_rxcui_ingred[['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables].groupby(['medication_product_name',  'medication_product_rxcui',  'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
+    dcp_dict['patient_count_product'] = meps_rxcui_ingred.groupby(['medication_product_name',  'medication_product_rxcui',  'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
     dcp_df = pd.DataFrame(dcp_dict['patient_count_product']).reset_index()
     #2
     dcp_df['weighted_patient_count_product'] = dcp_df['person_weight'].astype(float)*dcp_df['DUPERSID']
@@ -107,7 +105,7 @@ for ingred_name in medication_ingredient_list:
     dcp_demographictotal_df['percent_product_patients'] = dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total']*100
     #7
     dcp_dict['percent_product_patients'] = dcp_demographictotal_df
-    if groupby_demographic_variables == True:
+    if len(groupby_demographic_variables) > 0:
         dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_product_name', values='percent_product_patients').reset_index()
     else:
         dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'][['medication_product_name', 'percent_product_patients']].set_index('medication_product_name').T
