@@ -68,15 +68,19 @@ def read_sql_string(file_name):
 
     return query_str
 
-
-def age_values(file_name):
-    """reads age_ranges JSON to create dataframe with age_values"""
-    
+def read_json(file_name):
     # Opening JSON file
     f = open(file_name,)
     
     # returns JSON object as a dictionary
     data = json.load(f)
+    return data
+
+def age_values(file_name):
+    """reads age_ranges from JSON to create dataframe with age_values"""
+    
+    data = {}
+    data['age'] = read_json('mdt_config.json')['age']
     data['age_values'] = [list(range(int(age.split('-')[0]), int(age.split('-')[1])+1)) for age in data['age']]
     df = pd.DataFrame(data)
     df = df.explode('age_values')
@@ -231,15 +235,19 @@ def get_distributions(rxcui_ndc_match, rxclass_sources):
     #Join MEPS to filtered rxcui_ndc dataframe (rxcui_list)
     meps_rxcui = meps_reference.astype(str).merge(rxcui_ndc_match.astype(str)[['medication_ingredient_name', 'medication_ingredient_rxcui','medication_product_name', 'medication_product_rxcui', 'medication_ndc']], how = 'inner', left_on = 'RXNDC', right_on = 'medication_ndc')
 
-    #Optional: Age range join - can be customized in the age_ranges.py or age_ranges.json file
-    #groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state)
+    #Optional: Age range join - can be customized in the mdt_config.json file
+    #groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state) - based on user inputs in the mdt_config.json file
+
+    data = read_json('mdt_config.json')
+    demographic_distrib_flags = data['demographic_distrib_flags']
+
     groupby_demographic_variables = []
     for k, v in demographic_distrib_flags.items():
         if v == 'Y':
                groupby_demographic_variables.append(k)  
         
     if demographic_distrib_flags['age'] == 'Y':
-        age_ranges = age_values('age_ranges.json')
+        age_ranges = age_values('mdt_config.json')
         meps_rxcui = meps_rxcui.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
     #Optional: State-region mapping from MEPS 
     if demographic_distrib_flags['state'] == 'Y':
