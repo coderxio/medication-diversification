@@ -9,7 +9,6 @@ import json
 
 import urllib.parse
 
-from mdt_config import demographic_distrib_flags
 from meps_lists import meps_region_states
 
 #data gathering and database functions
