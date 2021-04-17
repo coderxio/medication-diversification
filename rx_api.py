@@ -1,8 +1,17 @@
-#TODO: better way to import functions?....this runs risk of override issues
-from mdt_functions import rxclass_getclassmember_payload, rxapi_get_requestor, json_extract, rxcui_ndc_matcher, output_df, get_distributions
+from mdt_functions import rxclass_findclassesbyid_payload, rxclass_getclassmember_payload, rxapi_get_requestor, json_extract, rxcui_ndc_matcher, output_df, get_distributions
 
-#Test call below:
-rxclass_response = rxapi_get_requestor(rxclass_getclassmember_payload('D001249','may_prevent'))
+#TODO: replace this with config settings or JSON input
+rxclass_id = 'C10AA'
+rxclass_rela = 'ATC'
+
+#Call RxClass FindClassesById API to get class info (name primarily) of the specified class
+rxclass_response = rxapi_get_requestor(rxclass_findclassesbyid_payload(rxclass_id))
+class_names =  json_extract(rxclass_response, 'className')
+#TODO: build in better error handling if rxclass_id is garbage or returns no info
+class_name = class_names[0] if len(class_names) > 0 else 'unspecified'
+
+#Call RxClass GetClassMember API to get members of the specified class with specified relationship(s)
+rxclass_response = rxapi_get_requestor(rxclass_getclassmember_payload(rxclass_id,rxclass_rela))
 rxcui_list = json_extract(rxclass_response, 'rxcui')
 
 #First match against rxcui_ndc
@@ -26,5 +35,5 @@ output_df(rxcui_ndc_match)
 
 #Gets distributions for the rxcui_ndc_match products
 #TODO: adjust the second argument so that it'll grab the rxclass_sources (class + description, e.g., asthma_may_prevent or ATC, e.g., CCBs)
-get_distributions(rxcui_ndc_match, 'asthma')
+get_distributions(rxcui_ndc_match, class_name)
 
