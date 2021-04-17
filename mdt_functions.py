@@ -2,11 +2,14 @@
 import requests, zipfile, io
 import pandas as pd
 import sqlite3 as sql
+import numpy as np
+import re
 
 import json
 
 import urllib.parse
 
+from meps_lists import meps_region_states
 
 #data gathering and database functions
 def create_mdt_con():
@@ -64,15 +67,19 @@ def read_sql_string(file_name):
 
     return query_str
 
-
-def age_values(file_name):
-    """reads age_ranges JSON to create dataframe with age_values"""
-    
+def read_json(file_name):
     # Opening JSON file
     f = open(file_name,)
     
     # returns JSON object as a dictionary
     data = json.load(f)
+    return data
+
+def age_values(file_name):
+    """reads age_ranges from JSON to create dataframe with age_values"""
+    
+    data = {}
+    data['age'] = read_json('mdt_config.json')['age']
     data['age_values'] = [list(range(int(age.split('-')[0]), int(age.split('-')[1])+1)) for age in data['age']]
     df = pd.DataFrame(data)
     df = df.explode('age_values')
@@ -217,3 +224,115 @@ def output_df(df,output='csv',filename='df_output'):
         df.to_clipboard(index=False,excel=True)
     elif output == 'csv':
         df.to_csv('data/'+filename+'.csv',index=False)
+
+
+def get_distributions(rxcui_ndc_match, rxclass_sources):
+    #Read in MEPS Reference table
+    meps_reference_str = read_sql_string('meps_reference.sql')
+    meps_reference = db_query(meps_reference_str)
+
+    #Join MEPS to filtered rxcui_ndc dataframe (rxcui_list)
+    meps_rxcui = meps_reference.astype(str).merge(rxcui_ndc_match.astype(str)[['medication_ingredient_name', 'medication_ingredient_rxcui','medication_product_name', 'medication_product_rxcui', 'medication_ndc']], how = 'inner', left_on = 'RXNDC', right_on = 'medication_ndc')
+
+    #Optional: Age range join - can be customized in the mdt_config.json file
+    #groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state) - based on user inputs in the mdt_config.json file
+
+    data = read_json('mdt_config.json')
+    demographic_distrib_flags = data['demographic_distrib_flags']
+
+    groupby_demographic_variables = []
+    for k, v in demographic_distrib_flags.items():
+        if v == 'Y':
+               groupby_demographic_variables.append(k)  
+        
+    if demographic_distrib_flags['age'] == 'Y':
+        age_ranges = age_values('mdt_config.json')
+        meps_rxcui = meps_rxcui.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
+    #Optional: State-region mapping from MEPS 
+    if demographic_distrib_flags['state'] == 'Y':
+        meps_rxcui = meps_rxcui.merge(meps_region_states.astype(str), how='inner', left_on='region_num', right_on='region_value')
+
+
+    #Clean text to JSON/SQL-friendly format 
+    for col in meps_rxcui[['medication_ingredient_name', 'medication_product_name']]:
+        meps_rxcui[col] = meps_rxcui[col].str.replace(r"[^a-zA-Z0-9]", "_", regex=True).str.replace(r"_{2,}|_$",'_',regex=True)
+
+        
+    dcp_dict = {}
+    medication_ingredient_list = meps_rxcui['medication_ingredient_name'].unique().tolist()
+   
+    #Ingredient Name Distribution (Transition 1)
+    """Numerator = ingred_name
+    Denominator = total population [filtered by rxclass_sources upstream between rxcui_ndc & rxclass]
+    1. Find distinct count of patients (DUPERSID) = patient_count
+    2. Multiply count of patients * personweight = weighted_patient_count
+    3. Add the weighted_patient_counts, segmented by ingredient_name + selected patient demographics = patients_by_demographics (Numerator) 
+    4. Add the patients_by_demographics from Step 3 = weighted_patient_count_total (Denominator) -- Taking SUM of SUMs to make the Denominator = 100%  
+    5. Calculate percentage (Output from Step 3/Output from Step 4)*100
+    6. Add the 'prescribe_' prefix to the medication_ingredient_name (e.g., 'prescribe_fluticasone') 
+    7. Pivot the dataframe to transpose medication_ingredient_names from rows to columns """
+
+    #1
+    dcp_dict['patient_count_ingredient'] = meps_rxcui[['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables].groupby(['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
+    dcp_df = pd.DataFrame(dcp_dict['patient_count_ingredient']).reset_index()
+    #2
+    dcp_df['weighted_patient_count_ingredient'] = dcp_df['person_weight'].astype(float)*dcp_df['DUPERSID']
+    #3
+    dcp_dict['patients_by_demographics_ingredient'] = dcp_df.groupby(['medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_ingredient'].sum()
+    dcp_demographic_df = pd.DataFrame(dcp_dict['patients_by_demographics_ingredient']).reset_index()
+    #4
+    if len(groupby_demographic_variables) > 0:
+        dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(groupby_demographic_variables)['weighted_patient_count_ingredient'].sum(), how = 'inner', left_on = groupby_demographic_variables, right_index=True, suffixes = ('_demographic', '_total'))
+    else:
+        dcp_demographictotal_df = dcp_demographic_df
+        dcp_demographictotal_df['weighted_patient_count_ingredient_demographic'] = dcp_demographic_df['weighted_patient_count_ingredient']
+        dcp_demographictotal_df['weighted_patient_count_ingredient_total'] = dcp_demographic_df['weighted_patient_count_ingredient'].sum()
+    #5
+    dcp_demographictotal_df['percent_ingredient_patients'] = dcp_demographictotal_df['weighted_patient_count_ingredient_demographic']/dcp_demographictotal_df['weighted_patient_count_ingredient_total']*100
+    #6
+    dcp_demographictotal_df['medication_ingredient_name'] = 'prescribe_'+dcp_demographictotal_df['medication_ingredient_name']
+    #7
+    dcp_dict['percent_ingredient_patients'] = dcp_demographictotal_df
+    if len(groupby_demographic_variables) > 0:
+        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_ingredient_name', values='percent_ingredient_patients').reset_index()
+    else:
+        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'][['medication_ingredient_name', 'percent_ingredient_patients']].set_index('medication_ingredient_name').T
+        
+    #Fill NULLs and save as CSV
+    dcp_dict['percent_ingredient_patients'].fillna(0, inplace=True)
+    output_df(dcp_dict['percent_ingredient_patients'], output='csv',filename=rxclass_sources+'_ingredient_distrib')
+
+
+    #Product Name Distribution (Transition 2)
+    """Numerator = product_name 
+    Denominator = ingred_name
+    Loop through all the ingredient_names to create product distributions by ingredient name
+    Same steps as above for Ingredient Name Distribution (1-7), but first filter medication_product_names for only those that have the same medication_ingredient_name (Step 0) """
+
+    for ingred_name in medication_ingredient_list:
+        #0
+        meps_rxcui_ingred = meps_rxcui[meps_rxcui['medication_ingredient_name']==ingred_name][['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables]
+        #1
+        dcp_dict['patient_count_product'] = meps_rxcui_ingred.groupby(['medication_product_name',  'medication_product_rxcui',  'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
+        dcp_df = pd.DataFrame(dcp_dict['patient_count_product']).reset_index()
+        #2
+        dcp_df['weighted_patient_count_product'] = dcp_df['person_weight'].astype(float)*dcp_df['DUPERSID']
+        #3
+        dcp_dict['patients_by_demographics_product'] = dcp_df.groupby(['medication_product_name', 'medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_product'].sum()
+        dcp_demographic_df = pd.DataFrame(dcp_dict['patients_by_demographics_product']).reset_index()
+        #4
+        dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(['medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_product'].sum(), how = 'inner', left_on = ['medication_ingredient_name']+groupby_demographic_variables, right_index=True, suffixes = ('_demographic', '_total'))
+        #5
+        dcp_demographictotal_df['medication_product_name'] = 'prescribe_'+dcp_demographictotal_df['medication_product_name']
+        #6
+        dcp_demographictotal_df['percent_product_patients'] = dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total']*100
+        #7
+        dcp_dict['percent_product_patients'] = dcp_demographictotal_df
+        if len(groupby_demographic_variables) > 0:
+            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_product_name', values='percent_product_patients').reset_index()
+        else:
+            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'][['medication_product_name', 'percent_product_patients']].set_index('medication_product_name').T
+        
+        #Fill NULLs and save as CSV 
+        dcp_dict['percent_product_patients'].fillna(0, inplace=True)
+        output_df(dcp_dict['percent_product_patients'],output='csv',filename=rxclass_sources+'_product_'+ingred_name+'_distrib')

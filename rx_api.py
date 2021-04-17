@@ -1,6 +1,5 @@
 #TODO: better way to import functions?....this runs risk of override issues
-from mdt_functions import *
-
+from mdt_functions import rxclass_getclassmember_payload, rxapi_get_requestor, json_extract, rxcui_ndc_matcher, output_df, get_distributions
 
 #Test call below:
 rxclass_response = rxapi_get_requestor(rxclass_getclassmember_payload('D001249','may_prevent'))
@@ -25,4 +24,7 @@ rxcui_ndc_match = rxcui_ndc_match.assign(
 #saves df to csv
 output_df(rxcui_ndc_match)
 
+#Gets distributions for the rxcui_ndc_match products
+#TODO: adjust the second argument so that it'll grab the rxclass_sources (class + description, e.g., asthma_may_prevent or ATC, e.g., CCBs)
+get_distributions(rxcui_ndc_match, 'asthma')
 
