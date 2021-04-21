@@ -7,7 +7,6 @@ from mdt_functions import zip_downloader, sql_create_table, db_query, read_sql_s
 
 from meps_lists import p_col_names, p_col_spaces, d_col_names, d_col_spaces, meps_region_states
 
-from mdt_config import meps_year
 
 #TODO: Mimic meps_r_package in python to make this cleaner and for obtaining more years worth of data.
 z = zip_downloader('https://www.meps.ahrq.gov/mepsweb/data_files/pufs/h206adat.zip')

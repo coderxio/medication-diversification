@@ -268,7 +268,7 @@ def get_distributions(rxcui_ndc_match, rxclass_sources):
     2. Multiply count of patients * personweight = weighted_patient_count
     3. Add the weighted_patient_counts, segmented by ingredient_name + selected patient demographics = patients_by_demographics (Numerator) 
     4. Add the patients_by_demographics from Step 3 = weighted_patient_count_total (Denominator) -- Taking SUM of SUMs to make the Denominator = 100%  
-    5. Calculate percentage (Output from Step 3/Output from Step 4)*100
+    5. Calculate percentage (Output from Step 3/Output from Step 4) -- format as 0.0-1.0 per Synthea requirements. 
     6. Add the 'prescribe_' prefix to the medication_ingredient_name (e.g., 'prescribe_fluticasone') 
     7. Pivot the dataframe to transpose medication_ingredient_names from rows to columns """
 
@@ -288,7 +288,7 @@ def get_distributions(rxcui_ndc_match, rxclass_sources):
         dcp_demographictotal_df['weighted_patient_count_ingredient_demographic'] = dcp_demographic_df['weighted_patient_count_ingredient']
         dcp_demographictotal_df['weighted_patient_count_ingredient_total'] = dcp_demographic_df['weighted_patient_count_ingredient'].sum()
     #5
-    dcp_demographictotal_df['percent_ingredient_patients'] = dcp_demographictotal_df['weighted_patient_count_ingredient_demographic']/dcp_demographictotal_df['weighted_patient_count_ingredient_total']*100
+    dcp_demographictotal_df['percent_ingredient_patients'] = round(dcp_demographictotal_df['weighted_patient_count_ingredient_demographic']/dcp_demographictotal_df['weighted_patient_count_ingredient_total'], 3)
     #6
     dcp_demographictotal_df['medication_ingredient_name'] = 'prescribe_'+dcp_demographictotal_df['medication_ingredient_name']
     #7
@@ -325,7 +325,7 @@ def get_distributions(rxcui_ndc_match, rxclass_sources):
         #5
         dcp_demographictotal_df['medication_product_name'] = 'prescribe_'+dcp_demographictotal_df['medication_product_name']
         #6
-        dcp_demographictotal_df['percent_product_patients'] = dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total']*100
+        dcp_demographictotal_df['percent_product_patients'] = round(dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total'], 3)
         #7
         dcp_dict['percent_product_patients'] = dcp_demographictotal_df
         if len(groupby_demographic_variables) > 0:
