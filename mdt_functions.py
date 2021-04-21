@@ -118,7 +118,17 @@ def payload_constructor(base_url,params):
                 'params':params_str}
 
     #debug print out
-    print("""payload built with base URL: {0} and parameters: {1}""".format(base_url,params_str))
+    print("""Payload built with base URL: {0} and parameters: {1}""".format(base_url,params_str))
+
+    return payload
+
+
+def rxclass_findclassesbyid_payload(class_id):
+    """Generates and returns URLs as strings for hitting the RxClass API function FindClassesById."""
+
+    param_dict = {'classId':class_id}
+    
+    payload = payload_constructor('https://rxnav.nlm.nih.gov/REST/rxclass/class/byId.json?', param_dict)
 
     return payload
 
@@ -227,6 +237,10 @@ def output_df(df,output='csv',filename='df_output'):
 
 
 def get_distributions(rxcui_ndc_match, rxclass_sources):
+    #Replace non-alphanumeric characters in rxclass_sources with underscores
+    #TODO: standardize the way we replace with regex - I tend to use re.sub instead of str.replace
+    rxclass_sources = re.sub(r"[^a-zA-Z0-9]", "_", rxclass_sources)
+
     #Read in MEPS Reference table
     meps_reference_str = read_sql_string('meps_reference.sql')
     meps_reference = db_query(meps_reference_str)

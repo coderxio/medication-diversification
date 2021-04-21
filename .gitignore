@@ -1,6 +1,8 @@
 data
 __pycache__
 .vscode
+venv
+.venv
 
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
