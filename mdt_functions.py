@@ -254,8 +254,10 @@ def generate_module(rxcui_ndc_df, rxclass_name):
 
 
     rxclass_name = normalize_name(rxclass_name)
-    module_dict['name'] = rxclass_name
+    module_dict['name'] = rxclass_name + ' Medications'
     module_dict['remarks'] = ['Remarks go here', 'and here.']
+    #NOTE: not sure the difference between 1 and 2... I think 2 is the most recent version(?)
+    module_dict['gmf_version'] = 2
 
     states_dict = {}
 
@@ -264,6 +266,11 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     states_dict['Initial'] = {
         'type': 'Initial',
         'direct_transition': state_prefix + 'Ingredient'
+    }
+
+    #Terminal state (required)
+    states_dict['Terminal'] = {
+        'type': 'Terminal'
     }
     
     #Get tuples of medication_product names and medication_product RXCUIs and loop through to generate MedicationOrders 
@@ -332,16 +339,17 @@ def generate_module(rxcui_ndc_df, rxclass_name):
         dcp_demographictotal_df['weighted_patient_count_ingredient_demographic'] = dcp_demographic_df['weighted_patient_count_ingredient']
         dcp_demographictotal_df['weighted_patient_count_ingredient_total'] = dcp_demographic_df['weighted_patient_count_ingredient'].sum()
     #5
-    dcp_demographictotal_df['percent_ingredient_patients'] = dcp_demographictotal_df['weighted_patient_count_ingredient_demographic']/dcp_demographictotal_df['weighted_patient_count_ingredient_total']*100
+    dcp_demographictotal_df['percent_ingredient_patients'] = round(dcp_demographictotal_df['weighted_patient_count_ingredient_demographic']/dcp_demographictotal_df['weighted_patient_count_ingredient_total'], 3)
     #6 TODO: change this column to medication_product_state_name(?)
     dcp_demographictotal_df['medication_ingredient_name'] = dcp_demographictotal_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x))
     #Generate ingredient table transition
     lookup_table_transition = []
     lookup_table_name = filename + '.' + output
-    for transition in dcp_demographictotal_df['medication_ingredient_name'].unique().tolist():
+    module_medication_ingredient_name_list = dcp_demographictotal_df['medication_ingredient_name'].unique().tolist()
+    for idx, transition in enumerate(module_medication_ingredient_name_list):
         lookup_table_transition.append({
             'transition': transition,
-            'default_probability': '0',
+            'default_probability': '1' if idx == 0 else '0',
             'lookup_table_name': lookup_table_name
         })
     state_name = state_prefix + 'Ingredient'
@@ -382,16 +390,17 @@ def generate_module(rxcui_ndc_df, rxclass_name):
         #4
         dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(['medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_product'].sum(), how = 'inner', left_on = ['medication_ingredient_name']+groupby_demographic_variables, right_index=True, suffixes = ('_demographic', '_total'))
         #5
-        dcp_demographictotal_df['percent_product_patients'] = dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total']*100
+        dcp_demographictotal_df['percent_product_patients'] = round(dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total'], 3)
         #6 TODO: change this column to medication_product_state_name or medication_product_transition_name(?)
         dcp_demographictotal_df['medication_product_name'] = dcp_demographictotal_df['medication_product_name'].apply(lambda x: normalize_name(state_prefix + x))
         #Generate product table transition
         lookup_table_transition = []
         lookup_table_name = filename + '.' + output
-        for transition in dcp_demographictotal_df['medication_product_name'].unique().tolist():
+        module_medication_product_name_list = dcp_demographictotal_df['medication_product_name'].unique().tolist()
+        for idx, transition in enumerate(module_medication_product_name_list):
             lookup_table_transition.append({
                 'transition': transition,
-                'default_probability': '0',
+                'default_probability': '1' if idx == 1 else '0',
                 'lookup_table_name': lookup_table_name
             })
         state_name = state_prefix + ingred_name
@@ -428,11 +437,6 @@ def generate_module(rxcui_ndc_df, rxclass_name):
             'direct_transition': 'Terminal',
             'name': state_name
         }
-
-    #Terminal state (required)
-    states_dict['Terminal'] = {
-        'type': 'Terminal'
-    }
 
     module_dict['states'] = states_dict
     

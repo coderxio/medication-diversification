@@ -1,7 +1,8 @@
 from mdt_functions import rxclass_findclassesbyid_payload, rxclass_getclassmember_payload, rxapi_get_requestor, json_extract, rxcui_ndc_matcher, output_df, generate_module
 
 #TODO: replace this with config settings or JSON input
-rxclass_id = 'D007037'
+#For testing: D007037 = Hypothyroidism, D001249 = Asthma
+rxclass_id = 'D001249'
 rxclass_rela = 'may_treat'
 
 #Call RxClass FindClassesById API to get class info (name primarily) of the specified class
