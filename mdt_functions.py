@@ -318,8 +318,8 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     2. Multiply count of patients * personweight = weighted_patient_count
     3. Add the weighted_patient_counts, segmented by ingredient_name + selected patient demographics = patients_by_demographics (Numerator) 
     4. Add the patients_by_demographics from Step 3 = weighted_patient_count_total (Denominator) -- Taking SUM of SUMs to make the Denominator = 100%  
-    5. Calculate percentage (Output from Step 3/Output from Step 4)*100
-    6. Add the 'prescribe_' prefix to the medication_ingredient_name (e.g., 'prescribe_fluticasone') and generate table transition
+    5. Calculate percentage (Output from Step 3/Output from Step 4) -- format as 0.0-1.0 per Synthea requirements. 
+    6. Add the 'prescribe_' prefix to the medication_ingredient_name (e.g., 'prescribe_fluticasone') 
     7. Pivot the dataframe to transpose medication_ingredient_names from rows to columns """
 
     filename = rxclass_name + '_ingredient_distrib'
