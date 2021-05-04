@@ -1,4 +1,6 @@
-
+from pathlib import Path
+import requests, os
+from typing import Callable
 
 def json_extract(obj, key):
     """Recursively fetch values from nested JSON."""
@@ -45,3 +47,16 @@ def rxapi_get_requestor(request_dict):
     if response.status_code == 200:
     #TODO: Add execption handling that can manage 200 responses with no JSON
         return response.json()
+
+
+def get_dataset(
+        dest: os.PathLike = Path.cwd(),
+        handler: Callable[[any], None] = None
+):
+    url = f'https://download.nlm.nih.gov/rxnorm/RxNorm_full_prescribe_current.zip'
+    response = requests.get(url)
+    if handler:
+        return handler(response.content)
+    (dest / url.split('/')[-1]).write_bytes(response.content)
+    return response
+
