@@ -1,8 +1,8 @@
-from mdt.database import create_mdt_con
+from mdt.database import load_rxnorm
 
 
 def main():
-    conn = create_mdt_con()
+    load_rxnorm()
 
 
 if __name__ == '__main__':
