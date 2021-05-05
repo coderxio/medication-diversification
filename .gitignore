@@ -1,8 +1,12 @@
 data
 __pycache__
 .vscode
+.vim
+.DS_Store
 venv
 .venv
+
+*.egg-info
 
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
