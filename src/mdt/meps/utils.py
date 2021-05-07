@@ -20,7 +20,7 @@ def get_dataset(
     response = requests.get(url)
 
     if handler:
-        return handler(response)
+        return handler(response.content)
 
     (dest / url.split('/')[-1]).write_bytes(response.content)
 
