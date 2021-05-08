@@ -11,7 +11,7 @@ setup(
     version='1.0.0',
     # description='A sample Python project',  # Optional
     # long_description=long_description,  # Optional
-    # long_description_content_type='text/markdown',  # Optional (see note above)
+    # long_description_content_type='text/markdown',  # Optional
     # url='https://github.com/pypa/sampleproject',  # Optional
     # author='A. Random Developer',  # Optional
     # author_email='author@example.com',  # Optional
@@ -19,13 +19,16 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     python_requires='>=3.6, <4',
-    # install_requires=['peppercorn'],  # Optional
+    install_requires=[
+        'requests',
+        'pandas'
+    ],  # Optional
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.
     # package_data={  # Optional
     #    'sample': ['package_data.dat'],
-    #},
+    # },
 
     # Although 'package_data' is the preferred approach, in some case you may
     # need to place data files outside of your packages. See:
