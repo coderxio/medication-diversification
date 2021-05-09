@@ -1,7 +1,11 @@
 import os
+import importlib.resources as pkg_resources
 from pathlib import Path
 from typing import Callable
 import requests
+
+from . import sql
+
 
 
 def get_dataset(
@@ -25,3 +29,8 @@ def get_dataset(
     (dest / url.split('/')[-1]).write_bytes(response.content)
 
     return response
+
+
+def get_sql(file_name):
+    meps_sql = pkg_resources.read_text(sql, file_name)
+    return meps_sql
