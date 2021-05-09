@@ -7,7 +7,7 @@ here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
-    name='medicationDiversification',
+    name='mdt',
     version='1.0.0',
     # description='A sample Python project',  # Optional
     # long_description=long_description,  # Optional
@@ -26,10 +26,9 @@ setup(
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.
-    # package_data={  # Optional
-    #    'sample': ['package_data.dat'],
-    # },
-
+    package_data={
+        "":['*.sql']
+    }
     # Although 'package_data' is the preferred approach, in some case you may
     # need to place data files outside of your packages. See:
     # http://docs.python.org/distutils/setupscript.html#installing-additional-files
