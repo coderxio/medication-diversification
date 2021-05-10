@@ -1,4 +1,4 @@
-from mdt_functions import rxclass_findclassesbyid_payload, rxclass_getclassmember_payload, rxapi_get_requestor, json_extract, rxcui_ndc_matcher, output_df, generate_module
+from mdt_functions import rxclass_findclassesbyid_payload, rxclass_getclassmember_payload, rxapi_get_requestor, json_extract, rxcui_ndc_matcher, filter_by_df, output_df, generate_module
 
 #TODO: replace this with config settings or JSON input
 #For testing: D007037 = Hypothyroidism, D001249 = Asthma
@@ -34,6 +34,13 @@ rxcui_ndc_df = rxcui_product_df.assign(
     .cumcount()
     + 1
 ).query('rn < 2').drop(columns=['rn'])
+
+#Filter by dose form group (DFG) or dose form (DF)
+#Function expects the rxcui_ndc_df, a list of DFG or DF names, and a flag for whether to include (default) or exclude
+#If list of DFGs or DFs is empty, then nothing is filtered out
+#https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html
+dfg_df_list = []
+rxcui_ndc_df = filter_by_df(rxcui_ndc_df, dfg_df_list)
 
 #Saves df to csv
 output_df(rxcui_ndc_df)
