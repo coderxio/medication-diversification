@@ -5,4 +5,61 @@ The Medication Diversification Tool (MDT) leverages publicly-available, governme
 The MDT automates the process for finding relevant medication codes and calculating a distribution of medications, using medication classification dictionaries from RxClass and population-level prescription data from the Medical Expenditure Panel Survey (MEPS). The medication distributions can be tailored to specific patient demographics (e.g., age, gender, state of residence) and combined with Synthea data to generate medication records for a sample patient population.
 
 
+## How to replace a MedicationOrder with an MDT submodule
+To replace a MedicationOrder with one of our MDT submodules, replace the [MedicationOrder state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework:-States#medicationorder) with a [CallSubmodule state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#callsubmodule).
 
+```
+"Medication_Submodule": {
+  "type": "CallSubmodule",
+  "submodule": "medications/<<name_of_your_mdt_submodule_here_without_json_file_extension>>"
+}
+```
+
+Put the submodule JSON in the [`/src/main/resources/modules/medications` folder](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/medications).
+
+Put your transition table CSVs in the [`/src/main/resources/modules/lookup_tables` folder](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/lookup_tables).
+
+**Example for Hypothyroidism module:**
+
+Change this...
+
+```
+    "Synthroid Medication Order": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": 966222,
+          "display": "Levothyroxine Sodium 0.075 MG Oral Tablet"
+        }
+      ],
+      "direct_transition": "end encounter",
+      "prescription": {
+        "dosage": {
+          "amount": 1,
+          "frequency": 1,
+          "period": 60,
+          "unit": "days"
+        },
+        "duration": {
+          "quantity": 60,
+          "unit": "days"
+        },
+        "refills": 6
+      }
+    },
+```
+
+To this...
+
+```
+    "Synthroid Medication Order": {
+      "type": "CallSubmodule",
+      "submodule": "medications/hypothyroidism_medication",
+      "direct_transition": "end encounter"
+    },
+```
+
+And make sure your submodule JSON and transition table CSVs are in the folder locations specified above.
+
+So in this example, you would have a `hypothyroidism_medication.json` file in the `/src/main/resources/modules/medication` folder and you would have put all your transition table CSV files in the `/src/main/resources/modules/lookup_tables` folder.
