@@ -37,6 +37,13 @@ sql_create_table('rxcui_ndc', rxcui_ndc)
 del rxcui_ndc
 
 
+#Creates a table of distinct mappings between dose form group (DFG) and dose form (DF)
+dfg_df_string = read_sql_string('dfg_df.sql')
+dfg_df = db_query(dfg_df_string)
+sql_create_table('dfg_df', dfg_df)
+del dfg_df
+
+
 #TEST!!!!!!!!!!!!!!!! reads record count from created database
 RXNCONSO = db_query("Select count(*) AS records from rxnconso limit 1")
 print('DB table RXNCONSO has {0} records'.format(RXNCONSO['records'].iloc[0]))
@@ -50,4 +57,6 @@ print('DB table RXNSAT has {0} records'.format(RXNSAT['records'].iloc[0]))
 rxcui_ndc = db_query("Select count(*) AS records from rxcui_ndc limit 1")
 print('DB table rxcui_ndc has {0} records'.format(rxcui_ndc['records'].iloc[0]))
 
+dfg_df = db_query("Select count(*) AS records from dfg_df limit 1")
+print('DB table dfg_df has {0} records'.format(dfg_df['records'].iloc[0]))
 
