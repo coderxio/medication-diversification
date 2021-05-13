@@ -5,7 +5,7 @@ The Medication Diversification Tool (MDT) leverages publicly-available, governme
 The MDT automates the process for finding relevant medication codes and calculating a distribution of medications, using medication classification dictionaries from RxClass and population-level prescription data from the Medical Expenditure Panel Survey (MEPS). The medication distributions can be tailored to specific patient demographics (e.g., age, gender, state of residence) and combined with Synthea data to generate medication records for a sample patient population.
 
 
-## How to replace a MedicationOrder with an MDT submodule
+## How to replace a MedicationOrder with a MDT submodule
 To replace a MedicationOrder with one of our MDT submodules, replace the [MedicationOrder state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework:-States#medicationorder) with a [CallSubmodule state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#callsubmodule).
 
 ```
@@ -15,11 +15,13 @@ To replace a MedicationOrder with one of our MDT submodules, replace the [Medica
 }
 ```
 
-Put the submodule JSON in the [`/src/main/resources/modules/medications` folder](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/medications).
+Put the submodule JSON file in the [`/src/main/resources/modules/medications`](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/medications) folder.
 
-Put your transition table CSVs in the [`/src/main/resources/modules/lookup_tables` folder](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/lookup_tables).
+Put your transition table CSV files in the [`/src/main/resources/modules/lookup_tables`](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/lookup_tables) folder.
 
-**Example for Hypothyroidism module:**
+**Example for hypothyroidism module:**
+
+Using the existing [hypothyroidism module](https://github.com/synthetichealth/synthea/blob/master/src/main/resources/modules/hypothyroidism.json) as an example...
 
 Change this...
 
@@ -61,5 +63,25 @@ To this...
 ```
 
 And make sure your submodule JSON and transition table CSVs are in the folder locations specified above.
+* Put a `hypothyroidism_medication.json` file in the `/src/main/resources/modules/medication` folder
+* Put all the transition table CSV files in the `/src/main/resources/modules/lookup_tables` folder
 
-So in this example, you would have a `hypothyroidism_medication.json` file in the `/src/main/resources/modules/medication` folder and you would have put all your transition table CSV files in the `/src/main/resources/modules/lookup_tables` folder.
+See below for example file structure:
+
+```
+src/
+├─ main/
+│  ├─ resources/
+│  │  ├─ modules/
+│  │  │  ├─ medication/
+│  │  │  │  ├─ hypothyroidism_medication.json
+│  │  │  │  ├─ ...
+│  │  │  ├─ lookup_tables/
+│  │  │  │  ├─ Hypothyroidism_ingredient_distrib.csv
+│  │  │  │  ├─ Hypothyroidism_product_levothyroxine_distrib.csv
+│  │  │  │  ├─ Hypothyroidism_product_liothyronine_distrib.csv
+│  │  │  │  ├─ Hypothyroidism_product_thyroid_USP_distrib.csv
+│  │  │  │  ├─ ...
+│  │  │  ├─ hypothyroidism.json
+│  │  │  ├─ ...
+```
