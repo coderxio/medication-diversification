@@ -41,6 +41,13 @@ meps_reference = db_query(meps_reference_str)
 sql_create_table('meps_reference', meps_reference)
 del meps_reference
 
+
+meps_rx_qty_ds_string = read_sql_string('meps_rx_qty_ds.sql')
+meps_rx_qty_ds = db_query(meps_rx_qty_ds_string)
+sql_create_table('meps_rx_qty_ds', meps_rx_qty_ds)
+del meps_rx_qty_ds
+
+
 #TEST!!!!!!!!!!!!!!!! reads record count from created database
 meps_prescription = db_query("Select count(*) AS records from meps_prescription")
 print('DB table meps_prescription  has {0} records'.format(meps_prescription['records'].iloc[0]))
@@ -48,8 +55,11 @@ print('DB table meps_prescription  has {0} records'.format(meps_prescription['re
 meps_demographics = db_query("Select count(*) AS records from meps_demographics")
 print('DB table meps_demographics has {0} records'.format(meps_demographics['records'].iloc[0]))
 
+meps_region_states = db_query("Select count(*) AS records from meps_region_states")
+print('DB table meps_region_states has {0} records'.format(meps_region_states['records'].iloc[0]))
+
 meps_reference = db_query("Select count(*) AS records from meps_reference")
 print('DB table meps_reference has {0} records'.format(meps_reference['records'].iloc[0]))
 
-meps_region_states = db_query("Select count(*) AS records from meps_region_states")
-print('DB table meps_region_states has {0} records'.format(meps_region_states['records'].iloc[0]))
+meps_rx_qty_ds = db_query("Select count(*) AS records from meps_rx_qty_ds")
+print('DB table meps_rx_qty_ds has {0} records'.format(meps_rx_qty_ds['records'].iloc[0]))
