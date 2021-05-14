@@ -22,7 +22,7 @@ del z
 
 
 
-#Combines required rxcui elements into a single datatable for use to obtain NDCs from joeys query saved in recui_ndc.sql
+#NOTE: Rob's python code to join one of these tables with the rxcui_ndc table goes here
 """
 rxcui_ndc_string = read_sql_string('rxcui_ndc.sql')
 rxcui_ndc = db_query(rxcui_ndc_string)
@@ -37,4 +37,3 @@ print('DB table product has {0} records'.format(product['records'].iloc[0]))
 
 package = db_query("Select count(*) AS records from package limit 1")
 print('DB table package has {0} records'.format(package['records'].iloc[0]))
-
