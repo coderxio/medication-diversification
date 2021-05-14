@@ -269,8 +269,6 @@ def get_prescription_details(rxcui):
         'duration': duration
     }
 
-    print(prescription)
-    
     return prescription
 
 def output_df(df,output='csv', filename='df_output'):
