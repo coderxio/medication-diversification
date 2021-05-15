@@ -226,7 +226,54 @@ def rxcui_ndc_matcher(rxcui_list):
     
     return filtered_df
 
-def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
+
+  def get_prescription_details(rxcui):
+    """mashes a medication product RXCUI against MEPS prescription details + RxNorm to get common prescription details. 
+    Either outputs False or a prescription object
+    https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#medicationorder"""
+
+    df = db_query('SELECT * FROM meps_rx_qty_ds')
+    filtered_df = df[df['medication_product_rxcui'] == rxcui]
+    
+    #If the medication product does not have any reliable prescription details, don't generate prescription details
+    #NOTE: not sure if 'return False' is the best way to do this - open to alternatives
+    if len(filtered_df.index) == 0:
+        return False
+
+    #Currently, this just picks the most common prescription details at the medication product level
+    #TODO: if there are more than 1 common prescription details, randomly pick one - favoring the more common ones
+    selected_rx_details = filtered_df.iloc[0].to_dict()
+
+    #NOTE: Synthea currently doesn't appear to have a field to capture quantity prescribed as part of the MedicationOrder
+    rx_qty = selected_rx_details['RXQUANTY']
+    rx_ds = selected_rx_details['RXDAYSUP']
+
+    #See FHIR Timing reference for how these variables are calculated
+    #http://hl7.org/fhir/DSTU2/datatypes.html#Timing
+    frequency = int(rx_qty / rx_ds) if rx_qty >= rx_ds else 1
+    period = int(rx_ds / rx_qty) if rx_ds > rx_qty else 1
+
+    dosage = {
+        'amount': 1,
+        'frequency': frequency,
+        'period': period,
+        'unit': 'days'
+    }
+
+    duration = {
+        'quantity': rx_ds,
+        'unit': 'days'
+    }
+
+    prescription = {
+        'dosage': dosage,
+        'duration': duration
+    }
+
+    return prescription
+
+  
+  def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
     """Gets DFs from dfg_df table that match either a DF in the list, or have a DFG that matches a DFG in the list
     If dfg_df list is empty, return the rxcui_ndc_df without filtering
     Select method option of include or exclude....include is default"""
@@ -248,6 +295,7 @@ def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
     print("RXCUI list filtered on DF matched on {0} NDCs".format(filtered_rxcui_ndc_df['medication_ndc'].count()))
     
     return filtered_rxcui_ndc_df
+
 
 def output_df(df,output='csv', filename='df_output'):
     """Outputs a dataframe to a csv of clipboard if you use the output=clipboard arguement"""
