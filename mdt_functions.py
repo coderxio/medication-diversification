@@ -226,7 +226,8 @@ def rxcui_ndc_matcher(rxcui_list):
     
     return filtered_df
 
-def get_prescription_details(rxcui):
+
+  def get_prescription_details(rxcui):
     """mashes a medication product RXCUI against MEPS prescription details + RxNorm to get common prescription details. 
     Either outputs False or a prescription object
     https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#medicationorder"""
@@ -270,6 +271,31 @@ def get_prescription_details(rxcui):
     }
 
     return prescription
+
+  
+  def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
+    """Gets DFs from dfg_df table that match either a DF in the list, or have a DFG that matches a DFG in the list
+    If dfg_df list is empty, return the rxcui_ndc_df without filtering
+    Select method option of include or exclude....include is default"""
+
+    if len(dfg_df_list) == 0:
+        return rxcui_ndc_df
+
+    dfg_df_df = db_query('SELECT * FROM dfg_df')
+    filtered_dfg_df_df = dfg_df_df[dfg_df_df['dfg'].isin(dfg_df_list) | dfg_df_df['df'].isin(dfg_df_list)]
+    df_list = filtered_dfg_df_df['df'].tolist()
+
+    if method == 'include':
+        filtered_rxcui_ndc_df = rxcui_ndc_df[rxcui_ndc_df['dose_form_name'].isin(df_list)]
+    elif method == 'exclude':
+        filtered_rxcui_ndc_df = rxcui_ndc_df[~rxcui_ndc_df['dose_form_name'].isin(df_list)]
+    else:
+        filtered_rxcui_ndc_df = rxcui_ndc_df
+    
+    print("RXCUI list filtered on DF matched on {0} NDCs".format(filtered_rxcui_ndc_df['medication_ndc'].count()))
+    
+    return filtered_rxcui_ndc_df
+
 
 def output_df(df,output='csv', filename='df_output'):
     """Outputs a dataframe to a csv of clipboard if you use the output=clipboard arguement"""
