@@ -119,7 +119,7 @@ def load_meps():
 
     sql_create_table('meps_region_states', meps.columns.meps_region_states)
 
-    meps_reference_str = read_sql_string('meps_reference.sql')
+    meps_reference_str = meps.utils.get_sql('meps_reference.sql')
     meps_reference = db_query(meps_reference_str)
     sql_create_table('meps_reference', meps_reference)
     del meps_reference
