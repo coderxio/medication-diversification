@@ -79,6 +79,10 @@ def load_rxnorm():
 
     del z
 
+    rxcui_ndc = db_query(rxnorm.utils.get_sql('rxcui_ndc.sql'))
+    sql_create_table('rxcui_ndc', rxcui_ndc)
+    del rxcui_ndc
+
 
 def load_meps():
     '''Load Meps data into db'''
