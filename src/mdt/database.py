@@ -1,4 +1,4 @@
-from . import rxnorm, meps
+from . import rxnorm, meps, fda
 from pathlib import Path
 import zipfile
 import io
@@ -144,3 +144,36 @@ def load_meps():
 
     meps_region_states = db_query("Select count(*) AS records from meps_region_states")
     print('DB table meps_region_states has {0} records'.format(meps_region_states['records'].iloc[0]))
+
+
+def load_fda():
+    '''Load FDA tables into db'''
+
+    z = zipfile.ZipFile(
+        fda.utils.get_dataset(handler=io.BytesIO)
+    )
+    product = pd.read_csv(z.open('product.txt'),sep='\t',dtype=object,header=0,encoding='cp1252')
+    package = pd.read_csv(z.open('package.txt'),sep='\t',dtype=object,header=0,encoding='cp1252')
+    sql_create_table('product',product)
+    sql_create_table('package',package)
+    del product
+    del package
+
+    #deletes FDA ZIP
+    del z
+
+    #NOTE: Rob's python code to join one of these tables with the rxcui_ndc table goes here
+    """
+    rxcui_ndc_string = read_sql_string('rxcui_ndc.sql')
+    rxcui_ndc = db_query(rxcui_ndc_string)
+    sql_create_table('rxcui_ndc', rxcui_ndc)
+    del rxcui_ndc
+    """
+
+
+    #TEST!!!!!!!!!!!!!!!! reads record count from created database
+    product = db_query("Select count(*) AS records from product limit 1")
+    print('DB table product has {0} records'.format(product['records'].iloc[0]))
+
+    package = db_query("Select count(*) AS records from package limit 1")
+    print('DB table package has {0} records'.format(package['records'].iloc[0]))
