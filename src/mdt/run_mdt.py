@@ -1,3 +1,4 @@
+from pathlib import Path
 from mdt.database import load_rxnorm, load_meps
 from mdt import rxnorm
 from mdt.utils import (
@@ -8,8 +9,10 @@ from mdt.utils import (
 
 
 def main():
-    load_rxnorm()
-    load_meps()
+
+    if not (Path.cwd() / 'data' / 'MDT.db'):
+        load_rxnorm()
+        load_meps()
 
     #TODO: replace this with config settings or JSON input
     #For testing: D007037 = Hypothyroidism, D001249 = Asthma
