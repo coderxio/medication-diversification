@@ -75,13 +75,17 @@ def load_rxnorm():
     col_names = ['RXCUI','LUI','SUI','RXAUI','STYPE','CODE','ATUI','SATUI','ATN','SAB','ATV','SUPPRESS','CVF','test']
     rxnsat = pd.read_csv(z.open('rrf/RXNSAT.RRF'),sep='|',dtype=object,header=None,names=col_names)
     sql_create_table('rxnsat',rxnsat)
-    del rxnsat 
+    del rxnsat
 
     del z
 
     rxcui_ndc = db_query(rxnorm.utils.get_sql('rxcui_ndc.sql'))
     sql_create_table('rxcui_ndc', rxcui_ndc)
     del rxcui_ndc
+
+    dfg_df = db_query(rxnorm.utils.get_sql('dfg_df.sql'))
+    sql_create_table('dfg_df', dfg_df)
+    del dfg_df
 
 
 def load_meps():
