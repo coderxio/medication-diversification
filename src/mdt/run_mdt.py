@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from mdt.database import load_rxnorm, load_meps
 from mdt import rxnorm
@@ -8,16 +9,14 @@ from mdt.utils import (
 )
 
 
-def main():
+#TODO: replace this with config settings or JSON input
+#For testing: D007037 = Hypothyroidism, D001249 = Asthma
+
+def main(rxclass_id, rxclass_rela):
 
     if not (Path.cwd() / 'data' / 'MDT.db'):
         load_rxnorm()
         load_meps()
-
-    #TODO: replace this with config settings or JSON input
-    #For testing: D007037 = Hypothyroidism, D001249 = Asthma
-    rxclass_id = 'D001249'
-    rxclass_rela = 'may_treat'
 
     #Call RxClass FindClassesById API to get class info (name primarily) of the specified class
     rxclass_response = rxnorm.utils.rxapi_get_requestor(
@@ -72,4 +71,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    rxclass_id = sys.argv[1]
+    rxclass_rela = sys.argv[2]
+    main(rxclass_id, rxclass_rela)
