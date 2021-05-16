@@ -1,6 +1,10 @@
 from pathlib import Path
+import importlib.resources as pkg_resources
 import requests, os
 from typing import Callable
+
+from . import sql
+
 
 def json_extract(obj, key):
     """Recursively fetch values from nested JSON."""
@@ -60,3 +64,7 @@ def get_dataset(
     (dest / url.split('/')[-1]).write_bytes(response.content)
     return response
 
+
+def get_sql(file_name):
+    meps_sql = pkg_resources.read_text(sql, file_name)
+    return meps_sql
