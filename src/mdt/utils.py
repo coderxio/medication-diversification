@@ -1,6 +1,7 @@
 import json
 import re
 import pandas as pd
+from mdt.config import MEPS_CONFIG
 from mdt.database import db_query, read_sql_string
 from mdt import meps
 
@@ -13,11 +14,12 @@ def read_json(file_name):
     return data
 
 
-def age_values(file_name):
+# Monkey patched this function to get run_mdt working by removing the filename arg and importing from config
+def age_values():
     """reads age_ranges from JSON to create dataframe with age_values"""
-    
+
     data = {}
-    data['age'] = read_json('mdt_config.json')['age']
+    data['age'] = MEPS_CONFIG['age']
     data['age_values'] = [list(range(int(age.split('-')[0]), int(age.split('-')[1])+1)) for age in data['age']]
     df = pd.DataFrame(data)
     df = df.explode('age_values')
@@ -98,7 +100,7 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     #Optional: Age range join - can be customized in the mdt_config.json file
     #groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state) - based on user inputs in the mdt_config.json file
 
-    data = read_json('mdt_config.json')
+    data = MEPS_CONFIG
     demographic_distrib_flags = data['demographic_distrib_flags']
 
     groupby_demographic_variables = []
@@ -107,7 +109,7 @@ def generate_module(rxcui_ndc_df, rxclass_name):
                groupby_demographic_variables.append(k)  
         
     if demographic_distrib_flags['age'] == 'Y':
-        age_ranges = age_values('mdt_config.json')
+        age_ranges = age_values()
         meps_rxcui = meps_rxcui.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
     #Optional: State-region mapping from MEPS 
     if demographic_distrib_flags['state'] == 'Y':
