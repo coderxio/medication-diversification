@@ -90,8 +90,7 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     #Get tuples of medication_product names and medication_product RXCUIs and loop through to generate MedicationOrders 
 
     #Read in MEPS Reference table
-    meps_reference_str = read_sql_string('meps_reference.sql')
-    meps_reference = db_query(meps_reference_str)
+    meps_reference = db_query(meps.utils.get_sql('meps_reference.sql'))
 
     #Join MEPS to filtered rxcui_ndc dataframe (rxcui_list)
     meps_rxcui = meps_reference.astype(str).merge(rxcui_ndc_df.astype(str)[['medication_ingredient_name', 'medication_ingredient_rxcui','medication_product_name', 'medication_product_rxcui', 'medication_ndc']], how = 'inner', left_on = 'RXNDC', right_on = 'medication_ndc')
