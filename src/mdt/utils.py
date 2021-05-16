@@ -1,4 +1,8 @@
-
+import json
+import re
+import pandas as pd
+from mdt.database import db_query, read_sql_string
+from mdt import meps
 
 def read_json(file_name):
     # Opening JSON file
@@ -108,7 +112,7 @@ def generate_module(rxcui_ndc_df, rxclass_name):
         meps_rxcui = meps_rxcui.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
     #Optional: State-region mapping from MEPS 
     if demographic_distrib_flags['state'] == 'Y':
-        meps_rxcui = meps_rxcui.merge(meps_region_states.astype(str), how='inner', left_on='region_num', right_on='region_value')
+        meps_rxcui = meps_rxcui.merge(meps.columns.meps_region_states.astype(str), how='inner', left_on='region_num', right_on='region_value')
 
 
     #Clean text to JSON/SQL-friendly format 
