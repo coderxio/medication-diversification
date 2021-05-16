@@ -4,6 +4,7 @@ from mdt.database import load_rxnorm, load_meps
 from mdt import rxnorm
 from mdt.utils import (
     rxcui_ndc_matcher,
+    filter_by_df,
     output_df,
     generate_module
 )
@@ -14,7 +15,7 @@ from mdt.utils import (
 
 def main(rxclass_id, rxclass_rela):
 
-    if not (Path.cwd() / 'data' / 'MDT.db'):
+    if not (Path.cwd() / 'data' / 'MDT.db').exists():
         load_rxnorm()
         load_meps()
 
@@ -58,8 +59,8 @@ def main(rxclass_id, rxclass_rela):
     #https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html
 
     # Add in after adding dfg info
-    # dfg_df_list = []
-    # rxcui_ndc_df = filter_by_df(rxcui_ndc_df, dfg_df_list)
+    dfg_df_list = []
+    rxcui_ndc_df = filter_by_df(rxcui_ndc_df, dfg_df_list)
 
     #Saves df to csv
     output_df(rxcui_ndc_df)
