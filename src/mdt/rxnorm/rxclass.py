@@ -1,3 +1,4 @@
+from .utils import payload_constructor
 
 
 def rxclass_findclassesbyid_payload(class_id):
