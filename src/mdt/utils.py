@@ -117,8 +117,15 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     #Read in MEPS Reference table
     meps_reference = db_query(meps.utils.get_sql('meps_reference.sql'))
 
+     #Read in FDA Ingredient-RxCUI-Years Reference table (for years that a given ingredient was available on the market)
+    ingredient_rxcui_years = db_query('SELECT * FROM medication_ingredient_rxcui_years')
+
+     #Read in FDA Product-RxCUI-Years Reference table (for years that a given product was available on the market)
+    product_rxcui_years = db_query('SELECT * FROM medication_product_rxcui_years')
+
     #Join MEPS to filtered rxcui_ndc dataframe (rxcui_list)
     meps_rxcui = meps_reference.astype(str).merge(rxcui_ndc_df.astype(str)[['medication_ingredient_name', 'medication_ingredient_rxcui','medication_product_name', 'medication_product_rxcui', 'medication_ndc']], how = 'inner', left_on = 'RXNDC', right_on = 'medication_ndc')
+
 
     #Optional: Age range join - can be customized in the mdt_config.json file
     #groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state) - based on user inputs in the mdt_config.json file
@@ -162,20 +169,23 @@ def generate_module(rxcui_ndc_df, rxclass_name):
 
     filename = rxclass_name + '_ingredient_distrib'
     #1
-    dcp_dict['patient_count_ingredient'] = meps_rxcui[['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables].groupby(['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
+    #Join MEPS to ingredient_rxcui_years dataframe (rxcuis_by_fda_marketingdates)
+    meps_rxcui_ingred_years = meps_rxcui.astype(str).merge(ingredient_rxcui_years.astype(str)[['medication_ingredient_rxcui', 'year']], how = 'inner', on = 'medication_ingredient_rxcui')
+    dcp_dict['patient_count_ingredient'] = meps_rxcui_ingred_years[['medication_ingredient_name',  'medication_ingredient_rxcui', 'year', 'person_weight', 'DUPERSID']+groupby_demographic_variables].groupby(['medication_ingredient_name',  'medication_ingredient_rxcui', 'year',  'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
     dcp_df = pd.DataFrame(dcp_dict['patient_count_ingredient']).reset_index()
     #2
     dcp_df['weighted_patient_count_ingredient'] = dcp_df['person_weight'].astype(float)*dcp_df['DUPERSID']
     #3
-    dcp_dict['patients_by_demographics_ingredient'] = dcp_df.groupby(['medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_ingredient'].sum()
+    dcp_dict['patients_by_demographics_ingredient'] = dcp_df.groupby(['medication_ingredient_name', 'year']+groupby_demographic_variables)['weighted_patient_count_ingredient'].sum()
     dcp_demographic_df = pd.DataFrame(dcp_dict['patients_by_demographics_ingredient']).reset_index()
     #4
     if len(groupby_demographic_variables) > 0:
-        dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(groupby_demographic_variables)['weighted_patient_count_ingredient'].sum(), how = 'inner', left_on = groupby_demographic_variables, right_index=True, suffixes = ('_demographic', '_total'))
+        dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(groupby_demographic_variables+['year'])['weighted_patient_count_ingredient'].sum(), how = 'inner', left_on = groupby_demographic_variables+['year'], right_index=True, suffixes = ('_demographic', '_total'))
     else:
-        dcp_demographictotal_df = dcp_demographic_df
-        dcp_demographictotal_df['weighted_patient_count_ingredient_demographic'] = dcp_demographic_df['weighted_patient_count_ingredient']
-        dcp_demographictotal_df['weighted_patient_count_ingredient_total'] = dcp_demographic_df['weighted_patient_count_ingredient'].sum()
+        # dcp_demographictotal_df = dcp_demographic_df
+        # dcp_demographictotal_df['weighted_patient_count_ingredient_demographic'] = dcp_demographic_df['weighted_patient_count_ingredient']
+        # dcp_demographictotal_df['weighted_patient_count_ingredient_total'] = dcp_demographic_df['weighted_patient_count_ingredient'].sum()
+        dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby('year')['weighted_patient_count_ingredient'].sum(), how = 'inner', left_on = 'year', right_index=True, suffixes = ('_demographic', '_total'))
     #5
     dcp_demographictotal_df['percent_ingredient_patients'] = round(dcp_demographictotal_df['weighted_patient_count_ingredient_demographic']/dcp_demographictotal_df['weighted_patient_count_ingredient_total'], 3)
     #6 TODO: change this column to medication_product_state_name(?)
@@ -199,9 +209,9 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     #7
     dcp_dict['percent_ingredient_patients'] = dcp_demographictotal_df
     if len(groupby_demographic_variables) > 0:
-        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_ingredient_name', values='percent_ingredient_patients').reset_index()
+        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'].reset_index().pivot(index= groupby_demographic_variables+['year'], columns = 'medication_ingredient_name', values='percent_ingredient_patients').reset_index()
     else:
-        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'][['medication_ingredient_name', 'percent_ingredient_patients']].set_index('medication_ingredient_name').T
+        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'][['medication_ingredient_name', 'percent_ingredient_patients', 'year']].set_index('medication_ingredient_name').T
         
     #Fill NULLs and save as CSV
     dcp_dict['percent_ingredient_patients'].fillna(0, inplace=True)
@@ -216,17 +226,19 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     for ingred_name in medication_ingredient_list:
         filename = rxclass_name + '_product_' + ingred_name + '_distrib'
         #0
-        meps_rxcui_ingred = meps_rxcui[meps_rxcui['medication_ingredient_name']==ingred_name][['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables]
+        #Join MEPS to product_rxcui_years dataframe (rxcuis_by_fda_marketingdates)
+        meps_rxcui_prod_years = meps_rxcui.astype(str).merge(product_rxcui_years.astype(str)[['medication_product_rxcui', 'year']], how = 'inner', on = 'medication_product_rxcui')
+        meps_rxcui_ingred = meps_rxcui_prod_years[meps_rxcui_prod_years['medication_ingredient_name']==ingred_name][['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name',  'medication_ingredient_rxcui', 'year', 'person_weight', 'DUPERSID']+groupby_demographic_variables]
         #1
-        dcp_dict['patient_count_product'] = meps_rxcui_ingred.groupby(['medication_product_name',  'medication_product_rxcui',  'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
+        dcp_dict['patient_count_product'] = meps_rxcui_ingred.groupby(['medication_product_name',  'medication_product_rxcui',  'medication_ingredient_name',  'medication_ingredient_rxcui', 'year', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
         dcp_df = pd.DataFrame(dcp_dict['patient_count_product']).reset_index()
         #2
         dcp_df['weighted_patient_count_product'] = dcp_df['person_weight'].astype(float)*dcp_df['DUPERSID']
         #3
-        dcp_dict['patients_by_demographics_product'] = dcp_df.groupby(['medication_product_name', 'medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_product'].sum()
+        dcp_dict['patients_by_demographics_product'] = dcp_df.groupby(['medication_product_name', 'medication_ingredient_name', 'year']+groupby_demographic_variables)['weighted_patient_count_product'].sum()
         dcp_demographic_df = pd.DataFrame(dcp_dict['patients_by_demographics_product']).reset_index()
         #4
-        dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(['medication_ingredient_name']+groupby_demographic_variables)['weighted_patient_count_product'].sum(), how = 'inner', left_on = ['medication_ingredient_name']+groupby_demographic_variables, right_index=True, suffixes = ('_demographic', '_total'))
+        dcp_demographictotal_df = pd.merge(dcp_demographic_df,  dcp_demographic_df.groupby(['medication_ingredient_name', 'year']+groupby_demographic_variables)['weighted_patient_count_product'].sum(), how = 'inner', left_on = ['medication_ingredient_name', 'year']+groupby_demographic_variables, right_index=True, suffixes = ('_demographic', '_total'))
         #5
         dcp_demographictotal_df['percent_product_patients'] = round(dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total'], 3)
         #6 TODO: change this column to medication_product_state_name or medication_product_transition_name(?)
@@ -250,9 +262,9 @@ def generate_module(rxcui_ndc_df, rxclass_name):
         #7
         dcp_dict['percent_product_patients'] = dcp_demographictotal_df
         if len(groupby_demographic_variables) > 0:
-            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_product_name', values='percent_product_patients').reset_index()
+            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'].reset_index().pivot(index= groupby_demographic_variables+['year'], columns = 'medication_product_name', values='percent_product_patients').reset_index()
         else:
-            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'][['medication_product_name', 'percent_product_patients']].set_index('medication_product_name').T
+            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'][['medication_product_name', 'percent_product_patients', 'year']].set_index('medication_product_name').T
         
         #Fill NULLs and save as CSV 
         dcp_dict['percent_product_patients'].fillna(0, inplace=True)
