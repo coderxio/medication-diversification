@@ -7,7 +7,7 @@ from mdt.utils import (
     filter_by_df,
     output_df,
     get_meps_rxcui_ndc_df,
-    generate_module_distribution_df,
+    generate_module_csv,
     generate_module_json
 )
 
@@ -71,11 +71,8 @@ def main(rxclass_id, rxclass_rela):
     #Join MEPS data with rxcui_ndc_df
     meps_rxcui_ndc_df = get_meps_rxcui_ndc_df(rxcui_ndc_df)
 
-    #Gets distributions for the rxcui_ndc_df products
-    #TODO: adjust the second argument so that it'll grab the rxclass_sources (class + description, e.g., asthma_may_prevent or ATC, e.g., CCBs)
-    #TODO: maybe add an input for a population_df so we can modularize MEPS in case they replace it with another population source
-    generate_module_distribution_df(meps_rxcui_ndc_df)
-    #generate_module(rxcui_ndc_df, rxclass_name)
+    #Generate distribution CSVs
+    generate_module_csv(meps_rxcui_ndc_df)
 
     #Generate JSON
     generate_module_json(meps_rxcui_ndc_df)
