@@ -1,3 +1,4 @@
+import importlib.resources as pkg_resources
 from . import rxnorm, meps, fda
 from pathlib import Path
 import zipfile
@@ -132,6 +133,10 @@ def load_meps():
     sql_create_table('meps_reference', meps_reference)
     del meps_reference
 
+    meps_rx_qty_ds = db_query(pkg_resources.read_text('mdt.sql', 'meps_rx_qty_ds.sql'))
+    sql_create_table('meps_rx_qty_ds', meps_rx_qty_ds)
+    del meps_rx_qty_ds
+
     # TEST!!!!!!!!!!!!!!!! reads record count from created database
     meps_prescription = db_query("Select count(*) AS records from meps_prescription")
     print('DB table meps_prescription  has {0} records'.format(meps_prescription['records'].iloc[0]))
@@ -144,6 +149,9 @@ def load_meps():
 
     meps_region_states = db_query("Select count(*) AS records from meps_region_states")
     print('DB table meps_region_states has {0} records'.format(meps_region_states['records'].iloc[0]))
+
+    meps_rx_qty_ds = db_query("Select count(*) AS records from meps_rx_qty_ds")
+    print('DB table meps_rx_qty_ds has {0} records'.format(meps_rx_qty_ds['records'].iloc[0]))
 
 
 def load_fda():
