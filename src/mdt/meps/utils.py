@@ -1,17 +1,16 @@
 import os
 import importlib.resources as pkg_resources
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Any
 import requests
 
 from . import sql
 
 
-
 def get_dataset(
         dat_name: str,
         dest: os.PathLike = Path.cwd(),
-        handler: Callable[[any], None] = None
+        handler: Callable[[Any], None] = None
 ):
     """Get a MEPS Dataset given a dat name + extension
 

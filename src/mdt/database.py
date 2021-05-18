@@ -24,33 +24,33 @@ def create_mdt_con():
 
 
 def sql_create_table(table_name, df, conn=None):
-    """Creates a table in the connected database when passed a pandas dataframe. 
+    """Creates a table in the connected database when passed a pandas dataframe.
     Note default is to delete dataframe if table name is same as global variable name that stores the df and delete_df is True"""
 
-    if conn == None:
+    if conn is None:
         conn = create_mdt_con()
 
     try:
-        df.to_sql(table_name, conn, if_exists='replace',index=False)
+        df.to_sql(table_name, conn, if_exists='replace', index=False)
         print('{} table created in DB'.format(table_name))
     except:
         print('Could not create table {0} in DB'.format(table_name))
 
 
-def db_query(query_str,conn=None):
+def db_query(query_str, conn=None):
     """Sends Query to DB and returns results as a dataframe"""
 
-    if conn == None:
-       conn = create_mdt_con()
+    if conn is None:
+        conn = create_mdt_con()
 
-    return pd.read_sql(query_str,conn)
+    return pd.read_sql(query_str, conn)
 
 
 def read_sql_string(file_name):
     """reads the contents of a sql script into a string for python to use in a query"""
 
     fd = open(file_name, 'r')
-    query_str  = fd.read()
+    query_str = fd.read()
     fd.close()
 
     print('Read {0} file as string'.format(file_name))
@@ -63,19 +63,37 @@ def load_rxnorm():
 
     z = zipfile.ZipFile(rxnorm.utils.get_dataset(handler=io.BytesIO))
 
-    col_names = ['RXCUI','LAT','TS','LUI','STT','SUI','ISPREF','RXAUI','SAUI','SCUI','SDUI','SAB','TTY','CODE','STR','SRL','SUPPRESS','CVF','test']
-    rxnconso = pd.read_csv(z.open('rrf/RXNCONSO.RRF'),sep='|',header=None,dtype=object,names=col_names)
-    sql_create_table('rxnconso',rxnconso)
+    col_names = ['RXCUI', 'LAT', 'TS', 'LUI', 'STT', 'SUI', 'ISPREF', 'RXAUI', 'SAUI', 'SCUI', 'SDUI', 'SAB', 'TTY', 'CODE', 'STR', 'SRL', 'SUPPRESS', 'CVF', 'test']
+    rxnconso = pd.read_csv(
+        z.open('rrf/RXNCONSO.RRF'),
+        sep='|',
+        header=None,
+        dtype=object,
+        names=col_names
+    )
+    sql_create_table('rxnconso', rxnconso)
     del rxnconso
 
-    col_names = ['RXCUI1','RXAUI1','STYPE1','REL','RXCUI2','RXAUI2','STYPE2','RELA','RUI','SRUI','SAB','SL','DIR','RG','SUPPRESS','CVF','test']
-    rxnrel = pd.read_csv(z.open('rrf/RXNREL.RRF'),sep='|',dtype=object,header=None,names=col_names)
-    sql_create_table('rxnrel',rxnrel)
+    col_names = ['RXCUI1', 'RXAUI1', 'STYPE1', 'REL', 'RXCUI2', 'RXAUI2', 'STYPE2', 'RELA', 'RUI', 'SRUI', 'SAB', 'SL', 'DIR', 'RG', 'SUPPRESS', 'CVF', 'test']
+    rxnrel = pd.read_csv(
+        z.open('rrf/RXNREL.RRF'),
+        sep='|',
+        dtype=object,
+        header=None,
+        names=col_names
+    )
+    sql_create_table('rxnrel', rxnrel)
     del rxnrel
 
-    col_names = ['RXCUI','LUI','SUI','RXAUI','STYPE','CODE','ATUI','SATUI','ATN','SAB','ATV','SUPPRESS','CVF','test']
-    rxnsat = pd.read_csv(z.open('rrf/RXNSAT.RRF'),sep='|',dtype=object,header=None,names=col_names)
-    sql_create_table('rxnsat',rxnsat)
+    col_names = ['RXCUI', 'LUI', 'SUI', 'RXAUI', 'STYPE', 'CODE', 'ATUI', 'SATUI', 'ATN', 'SAB', 'ATV', 'SUPPRESS', 'CVF', 'test']
+    rxnsat = pd.read_csv(
+        z.open('rrf/RXNSAT.RRF'),
+        sep='|',
+        dtype=object,
+        header=None,
+        names=col_names
+    )
+    sql_create_table('rxnsat', rxnsat)
     del rxnsat
 
     del z
@@ -121,7 +139,7 @@ def load_meps():
     )
 
     # removing numbers from meps_demographic column names, since the '18' in region18 and perwt18f in MEPS are year-specific
-    meps_demographics.columns = meps_demographics.columns.str.replace(r'\d+', '',regex=True)
+    meps_demographics.columns = meps_demographics.columns.str.replace(r'\d+', '', regex=True)
     sql_create_table('meps_demographics', meps_demographics)
     del meps_demographics
     del z
@@ -133,7 +151,9 @@ def load_meps():
     sql_create_table('meps_reference', meps_reference)
     del meps_reference
 
-    meps_rx_qty_ds = db_query(pkg_resources.read_text('mdt.sql', 'meps_rx_qty_ds.sql'))
+    meps_rx_qty_ds = db_query(
+        pkg_resources.read_text('mdt.sql', 'meps_rx_qty_ds.sql')
+    )
     sql_create_table('meps_rx_qty_ds', meps_rx_qty_ds)
     del meps_rx_qty_ds
 
@@ -160,17 +180,27 @@ def load_fda():
     z = zipfile.ZipFile(
         fda.utils.get_dataset(handler=io.BytesIO)
     )
-    product = pd.read_csv(z.open('product.txt'),sep='\t',dtype=object,header=0,encoding='cp1252')
-    package = pd.read_csv(z.open('package.txt'),sep='\t',dtype=object,header=0,encoding='cp1252')
-    sql_create_table('product',product)
-    sql_create_table('package',package)
+    product = pd.read_csv(
+        z.open('product.txt'),
+        sep='\t',
+        dtype=object, header=0, encoding='cp1252'
+    )
+    package = pd.read_csv(
+        z.open('package.txt'),
+        sep='\t',
+        dtype=object,
+        header=0,
+        encoding='cp1252'
+    )
+    sql_create_table('product', product)
+    sql_create_table('package', package)
     del product
     del package
 
-    #deletes FDA ZIP
+    # deletes FDA ZIP
     del z
 
-    #NOTE: Rob's python code to join one of these tables with the rxcui_ndc table goes here
+    # NOTE: Rob's python code to join one of these tables with the rxcui_ndc table goes here
     """
     rxcui_ndc_string = read_sql_string('rxcui_ndc.sql')
     rxcui_ndc = db_query(rxcui_ndc_string)
@@ -178,8 +208,7 @@ def load_fda():
     del rxcui_ndc
     """
 
-
-    #TEST!!!!!!!!!!!!!!!! reads record count from created database
+    # TEST!!!!!!!!!!!!!!!! reads record count from created database
     product = db_query("Select count(*) AS records from product limit 1")
     print('DB table product has {0} records'.format(product['records'].iloc[0]))
 
