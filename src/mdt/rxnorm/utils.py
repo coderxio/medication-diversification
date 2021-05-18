@@ -1,8 +1,9 @@
+import os
 import urllib
 from pathlib import Path
 import importlib.resources as pkg_resources
-import requests, os
-from typing import Callable
+import requests
+from typing import Callable, Any
 
 from . import sql
 
@@ -29,14 +30,16 @@ def json_extract(obj, key):
     return values
 
 
-def payload_constructor(base_url,params):
-    #TODO: exception handling for params as dict
+def payload_constructor(base_url, params):
+    # TODO: exception handling for params as dict
 
     params_str = urllib.parse.urlencode(params, safe=':+')
-    payload = {'base_url':base_url,
-                'params':params_str}
+    payload = {
+        'base_url': base_url,
+        'params': params_str
+    }
 
-    #debug print out
+    # debug print out
     print("""Payload built with base URL: {0} and parameters: {1}""".format(base_url,params_str))
 
     return payload
@@ -44,21 +47,25 @@ def payload_constructor(base_url,params):
 
 def rxapi_get_requestor(request_dict):
     """Sends a GET request to either RxNorm or RxClass"""
-    response = requests.get(request_dict['base_url'],params=request_dict['params'])
+    response = requests.get(
+        request_dict['base_url'],
+        params=request_dict['params']
+    )
 
-    #debug print out
+    # debug print out
     print("GET Request sent to URL: {0}".format(response.url))
     print("Response HTTP Code: {0}".format(response.status_code))
+
+    # TODO: Add execption handling that can manage 200 responses with no JSON
     if response.status_code == 200:
-    #TODO: Add execption handling that can manage 200 responses with no JSON
         return response.json()
 
 
 def get_dataset(
         dest: os.PathLike = Path.cwd(),
-        handler: Callable[[any], None] = None
+        handler: Callable[[Any], None] = None
 ):
-    url = f'https://download.nlm.nih.gov/rxnorm/RxNorm_full_prescribe_current.zip'
+    url = 'https://download.nlm.nih.gov/rxnorm/RxNorm_full_prescribe_current.zip'
     response = requests.get(url)
     if handler:
         return handler(response.content)
