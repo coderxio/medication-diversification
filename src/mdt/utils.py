@@ -77,13 +77,23 @@ def output_json(data, filename='json_output'):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 
-def normalize_name(name):
+def normalize_name(name, case=''):
+    """ Case is optional and choices are lower, upper, and camel """
+
     #Replace all non-alphanumeric characters with an underscore
     name = re.sub(r"[^a-zA-Z0-9]", "_", name)
     #Then, replace all duplicate underscores with just one underscore
     name = re.sub(r"_{2,}", "_", name)
     #If there'a an underscore at the end of the word, remove
     name = re.sub(r"_$", "", name)
+
+    if case == 'lower':
+        name = name.lower()
+    elif case == 'upper':
+        name = name.upper()
+    elif case == 'camel':
+        name = name.title()
+
     return name
 
 
@@ -101,6 +111,7 @@ def get_meps_rxcui_ndc_df(rxcui_ndc_df):
 def generate_module_json(meps_rxcui_ndc_df):
     config = MEPS_CONFIG
     module_name = config['module_name']
+    demographic_distribution_flags = config['demographic_distribution_flags']
     state_prefix = config['state_prefix']
     ingredient_distribution_suffix = config['ingredient_distribution_suffix']
     product_distribution_suffix = config['product_distribution_suffix']
@@ -109,7 +120,26 @@ def generate_module_json(meps_rxcui_ndc_df):
     module_dict = {}
 
     module_dict['name'] = module_name + ' Medications'
-    module_dict['remarks'] = ['Remarks go here', 'and here.']
+    module_dict['remarks'] = [
+        'This submodule prescribes a medication based on distributions of',
+        '<<INPUTS FROM CONFIG>>.', #i.e. age, gender, state
+        'IT IS UP TO THE CALLING MODULE TO END THIS MEDICATION BY ATTRIBUTE.',
+        'All medications prescribed in this module are assigned to the attribute',
+        '<<ATTRIBUTE NAME>>.',
+        'Input query for this submodule:',
+        '  Include: ',
+        '    RxClass: <<RXCLASS INCLUDES>>',
+        '    RxNorm: <<RXCUI INCLUDES>>',
+        '  Exclude:',
+        '    RxClass: <<RXCLASS EXCLUDES>>',
+        '    RxNorm: <<RXCUI EXCLUDES>>',
+        'Reference links:',
+        '  RxClass: https://mor.nlm.nih.gov/RxClass/',
+        '  RxNorm: https://www.nlm.nih.gov/research/umls/rxnorm/index.html',
+        '  RxNav: https://mor.nlm.nih.gov/RxNav/',
+        '  MEPS: https://meps.ahrq.gov/mepsweb/data_stats/MEPS_topics.jsp?topicid=46Z-1',
+        '  FDA: https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory'
+    ]
     #NOTE: not sure the difference between 1 and 2... I think 2 is the most recent version(?)
     module_dict['gmf_version'] = 2
 
@@ -122,12 +152,40 @@ def generate_module_json(meps_rxcui_ndc_df):
         'direct_transition': state_prefix + 'Ingredient'
     }
 
+    #Add this to Initial state?
+    """
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "medication_prescription",
+            "operator": "is nil"
+          },
+          "transition": "Prescribe_Medication_Medication"
+        },
+        {
+          "transition": "Terminal"
+        }
+      ]
+    """
+
     #Terminal state (required)
     states_dict['Terminal'] = {
         'type': 'Terminal'
     }
 
     #Generate ingredient table transition
+    ingredient_transition_state_remarks = [
+        '======================================================================',
+        ' MEDICATION INGREDIENT TRANSITION STATE                               ',
+        '======================================================================',
+    ]
+    ingredient_transition_state_remarks.append('Ingredients in lookup table:')
+    medication_ingredient_name_list = meps_rxcui_ndc_df['medication_ingredient_name'].unique().tolist()
+    for idx, name in enumerate(medication_ingredient_name_list, start=1):
+        ingredient_detail = ' {0}. {1}'.format(idx, name)
+        ingredient_transition_state_remarks.append(ingredient_detail)
+
     medication_ingredient_transition_name_list = meps_rxcui_ndc_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
     filename = module_name + ingredient_distribution_suffix
     lookup_table_name = filename + '.' + distribution_file_type
@@ -148,9 +206,20 @@ def generate_module_json(meps_rxcui_ndc_df):
     #Generate product table transition
     medication_ingredient_name_list = meps_rxcui_ndc_df['medication_ingredient_name'].unique().tolist()
     for ingredient_name in medication_ingredient_name_list:
+        product_transition_state_remarks = [
+            '======================================================================',
+            ' ' + ingredient_name.upper() + ' MEDICATION PRODUCT TRANSITION STATE  ',
+            '======================================================================',
+        ]
         filename = module_name + '_' + ingredient_name + product_distribution_suffix
         lookup_table_name = filename + '.' + distribution_file_type
         lookup_table_transition = []
+
+        product_transition_state_remarks.append('Products in lookup table:')
+        medication_product_name_list = meps_rxcui_ndc_df[meps_rxcui_ndc_df['medication_ingredient_name']==ingredient_name]['medication_product_name'].unique().tolist()
+        for idx, name in enumerate(medication_product_name_list, start=1):
+            product_detail = ' {0}. {1}'.format(idx, name)
+            product_transition_state_remarks.append(product_detail)
 
         medication_product_transition_name_list = meps_rxcui_ndc_df[meps_rxcui_ndc_df['medication_ingredient_name']==ingredient_name]['medication_product_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
         for idx, transition in enumerate(medication_product_transition_name_list):
@@ -183,6 +252,9 @@ def generate_module_json(meps_rxcui_ndc_df):
             'direct_transition': 'Terminal',
             'name': state_name
         }
+        prescription = get_prescription_details(medication_product_rxcui)
+        if prescription:
+            states_dict['prescription'] = prescription
 
     module_dict['states'] = states_dict
     
