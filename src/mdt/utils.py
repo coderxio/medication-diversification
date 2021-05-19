@@ -134,12 +134,29 @@ def normalize_name(name):
     return name
 
 
-def generate_module(rxcui_ndc_df, rxclass_name):
-    module_dict = {}
-    state_prefix = 'Prescribe_'
+def get_meps_rxcui_ndc_df(rxcui_ndc_df):
+    #Read in MEPS Reference table
+    meps_reference = db_query(meps.utils.get_sql('meps_reference.sql'))
 
-    rxclass_name = normalize_name(rxclass_name)
-    module_dict['name'] = rxclass_name + ' Medications'
+    #Join MEPS to filtered rxcui_ndc dataframe (rxcui_list)
+    meps_rxcui_ndc_df = meps_reference.astype(str).merge(rxcui_ndc_df.astype(str)[['medication_ingredient_name', 'medication_ingredient_rxcui','medication_product_name', 'medication_product_rxcui', 'medication_ndc']], how = 'inner', left_on = 'RXNDC', right_on = 'medication_ndc')
+    
+    output_df(meps_rxcui_ndc_df, filename='meps_rxcui_ndc_df_output')
+
+    return meps_rxcui_ndc_df
+
+def generate_module_json(meps_rxcui_ndc_df):
+    config = MEPS_CONFIG
+    module_name = config['module_name']
+    state_prefix = config['state_prefix']
+    ingredient_distribution_suffix = config['ingredient_distribution_suffix']
+    product_distribution_suffix = config['product_distribution_suffix']
+    distribution_file_type = config['distribution_file_type']
+
+    module_dict = {}
+
+    module_dict['name'] = module_name + ' Medications'
+
     module_dict['remarks'] = ['Remarks go here', 'and here.']
     # NOTE: not sure the difference between 1 and 2... I think 2 is the most recent version(?)
     module_dict['gmf_version'] = 2
@@ -157,45 +174,106 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     states_dict['Terminal'] = {
         'type': 'Terminal'
     }
-    #Get tuples of medication_product names and medication_product RXCUIs and loop through to generate MedicationOrders 
 
-    #Read in MEPS Reference table
-    meps_reference = db_query(meps.utils.get_sql('meps_reference.sql'))
+    #Generate ingredient table transition
+    medication_ingredient_transition_name_list = meps_rxcui_ndc_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
+    filename = module_name + ingredient_distribution_suffix
+    lookup_table_name = filename + '.' + distribution_file_type
+    lookup_table_transition = []
+    for idx, transition in enumerate(medication_ingredient_transition_name_list):
+        lookup_table_transition.append({
+            'transition': transition,
+            'default_probability': '1' if idx == 0 else '0',
+            'lookup_table_name': lookup_table_name
+        })
+    state_name = state_prefix + 'Ingredient'
+    states_dict[state_name] = {
+        'type': 'Simple',
+        'name': state_name,
+        'lookup_table_transition': lookup_table_transition
+    }
 
-    #Join MEPS to filtered rxcui_ndc dataframe (rxcui_list)
-    meps_rxcui = meps_reference.astype(str).merge(rxcui_ndc_df.astype(str)[['medication_ingredient_name', 'medication_ingredient_rxcui','medication_product_name', 'medication_product_rxcui', 'medication_ndc']], how = 'inner', left_on = 'RXNDC', right_on = 'medication_ndc')
+    #Generate product table transition
+    medication_ingredient_name_list = meps_rxcui_ndc_df['medication_ingredient_name'].unique().tolist()
+    for ingredient_name in medication_ingredient_name_list:
+        filename = module_name + '_' + ingredient_name + product_distribution_suffix
+        lookup_table_name = filename + '.' + distribution_file_type
+        lookup_table_transition = []
 
+        medication_product_transition_name_list = meps_rxcui_ndc_df[meps_rxcui_ndc_df['medication_ingredient_name']==ingredient_name]['medication_product_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
+        for idx, transition in enumerate(medication_product_transition_name_list):
+            lookup_table_transition.append({
+                'transition': transition,
+                'default_probability': '1' if idx == 0 else '0',
+                'lookup_table_name': lookup_table_name
+            })
+        state_name = state_prefix + ingredient_name
+        states_dict[state_name] = {
+            'type': 'Simple',
+            'name': state_name,
+            'lookup_table_transition': lookup_table_transition
+        }
+
+    #Generate MedicationOrder states
+    medication_products = list(meps_rxcui_ndc_df[['medication_product_name', 'medication_product_rxcui']].to_records(index=False))
+    for (medication_product_name, medication_product_rxcui) in medication_products:
+        state_name = normalize_name(state_prefix + medication_product_name)
+        attribute = normalize_name(module_name + '_prescription')
+        codes = {
+            'system': 'RxNorm',
+            'code': medication_product_rxcui,
+            'display': medication_product_name
+        }
+        states_dict[state_name] = {
+            'type': 'MedicationOrder',
+            'assign_to_attribute': attribute,
+            'codes': [ codes ],
+            'direct_transition': 'Terminal',
+            'name': state_name
+        }
+
+    module_dict['states'] = states_dict
+    
+    filename = module_name + '_medication'
+    output_json(module_dict, filename=filename)
+
+
+def generate_module_csv(meps_rxcui_ndc_df):
+    meps_rxcui = meps_rxcui_ndc_df
     #Optional: Age range join - can be customized in the mdt_config.json file
     #groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state) - based on user inputs in the mdt_config.json file
 
-    data = MEPS_CONFIG
-    demographic_distrib_flags = data['demographic_distrib_flags']
+    config = MEPS_CONFIG
+    module_name = config['module_name']
+    demographic_distribution_flags = config['demographic_distribution_flags']
+    state_prefix = config['state_prefix']
+    ingredient_distribution_suffix = config['ingredient_distribution_suffix']
+    product_distribution_suffix = config['product_distribution_suffix']
+    distribution_file_type = config['distribution_file_type']
 
     groupby_demographic_variables = []
-    for k, v in demographic_distrib_flags.items():
+    for k, v in demographic_distribution_flags.items():
         if v == 'Y':
                groupby_demographic_variables.append(k)  
         
-    if demographic_distrib_flags['age'] == 'Y':
+    #Optional: age range from MEPS 
+    if demographic_distribution_flags['age'] == 'Y':
         age_ranges = age_values()
-        meps_rxcui = meps_rxcui.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
-    #Optional: State-region mapping from MEPS 
-    if demographic_distrib_flags['state'] == 'Y':
-        meps_rxcui = meps_rxcui.merge(meps.columns.meps_region_states.astype(str), how='inner', left_on='region_num', right_on='region_value')
-
+        meps_rxcui_ndc_df = meps_rxcui_ndc_df.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
+    
+    #Optional: state-region mapping from MEPS 
+    if demographic_distribution_flags['state'] == 'Y':
+        meps_rxcui_ndc_df = meps_rxcui_ndc_df.merge(meps.columns.meps_region_states.astype(str), how='inner', left_on='region_num', right_on='region_value')
 
     #Clean text to JSON/SQL-friendly format 
-    for col in meps_rxcui[['medication_ingredient_name', 'medication_product_name']]:
-        meps_rxcui[col] = meps_rxcui[col].apply(lambda x: normalize_name(x))
-
+    for col in meps_rxcui_ndc_df[['medication_ingredient_name', 'medication_product_name']]:
+        meps_rxcui_ndc_df[col] = meps_rxcui_ndc_df[col].apply(lambda x: normalize_name(x))
         
     dcp_dict = {}
-    output = 'csv'
-    medication_ingredient_list = meps_rxcui['medication_ingredient_name'].unique().tolist()
-   
+    medication_ingredient_list = meps_rxcui_ndc_df['medication_ingredient_name'].unique().tolist()
+  
     #Ingredient Name Distribution (Transition 1)
-
-    """Numerator = ingred_name
+    """Numerator = ingredient_name
     Denominator = total population [filtered by rxclass_name upstream between rxcui_ndc & rxclass]
     1. Find distinct count of patients (DUPERSID) = patient_count
     2. Multiply count of patients * personweight = weighted_patient_count
@@ -205,9 +283,9 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     6. Add the 'prescribe_' prefix to the medication_ingredient_name (e.g., 'prescribe_fluticasone') 
     7. Pivot the dataframe to transpose medication_ingredient_names from rows to columns """
 
-    filename = rxclass_name + '_ingredient_distrib'
+    filename = module_name + ingredient_distribution_suffix
     #1
-    dcp_dict['patient_count_ingredient'] = meps_rxcui[['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables].groupby(['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
+    dcp_dict['patient_count_ingredient'] = meps_rxcui_ndc_df[['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables].groupby(['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
     dcp_df = pd.DataFrame(dcp_dict['patient_count_ingredient']).reset_index()
     #2
     dcp_df['weighted_patient_count_ingredient'] = dcp_df['person_weight'].astype(float)*dcp_df['DUPERSID']
@@ -224,44 +302,30 @@ def generate_module(rxcui_ndc_df, rxclass_name):
     #5
     dcp_demographictotal_df['percent_ingredient_patients'] = round(dcp_demographictotal_df['weighted_patient_count_ingredient_demographic']/dcp_demographictotal_df['weighted_patient_count_ingredient_total'], 3)
     #6 TODO: change this column to medication_product_state_name(?)
-    dcp_demographictotal_df['medication_ingredient_name'] = dcp_demographictotal_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x))
-    #Generate ingredient table transition
-    lookup_table_transition = []
-    lookup_table_name = filename + '.' + output
-    module_medication_ingredient_name_list = dcp_demographictotal_df['medication_ingredient_name'].unique().tolist()
-    for idx, transition in enumerate(module_medication_ingredient_name_list):
-        lookup_table_transition.append({
-            'transition': transition,
-            'default_probability': '1' if idx == 0 else '0',
-            'lookup_table_name': lookup_table_name
-        })
-    state_name = state_prefix + 'Ingredient'
-    states_dict[state_name] = {
-        'type': 'Simple',
-        'name': state_name,
-        'lookup_table_transition': lookup_table_transition
-    }
+    dcp_demographictotal_df['medication_ingredient_transition_name'] = dcp_demographictotal_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x))
     #7
     dcp_dict['percent_ingredient_patients'] = dcp_demographictotal_df
     if len(groupby_demographic_variables) > 0:
-        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_ingredient_name', values='percent_ingredient_patients').reset_index()
+        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'].reset_index().pivot(index=groupby_demographic_variables, columns='medication_ingredient_transition_name', values='percent_ingredient_patients').reset_index()
     else:
-        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'][['medication_ingredient_name', 'percent_ingredient_patients']].set_index('medication_ingredient_name').T
+        dcp_dict['percent_ingredient_patients'] = dcp_dict['percent_ingredient_patients'][['medication_ingredient_transition_name', 'percent_ingredient_patients']].set_index('medication_ingredient_transition_name').T
         
     #Fill NULLs and save as CSV
     dcp_dict['percent_ingredient_patients'].fillna(0, inplace=True)
-    output_df(dcp_dict['percent_ingredient_patients'], output=output, filename=filename)
+    ingredient_distribution_df = dcp_dict['percent_ingredient_patients']
+    output_df(ingredient_distribution_df, output=distribution_file_type, filename=filename)
 
     #Product Name Distribution (Transition 2)
     """Numerator = product_name 
-    Denominator = ingred_name
+    Denominator = ingredient_name
     Loop through all the ingredient_names to create product distributions by ingredient name
     Same steps as above for Ingredient Name Distribution (1-7), but first filter medication_product_names for only those that have the same medication_ingredient_name (Step 0) """
 
-    for ingred_name in medication_ingredient_list:
-        filename = rxclass_name + '_product_' + ingred_name + '_distrib'
+
+    for ingredient_name in medication_ingredient_list:
+        filename = module_name + '_' + ingredient_name + product_distribution_suffix
         #0
-        meps_rxcui_ingred = meps_rxcui[meps_rxcui['medication_ingredient_name']==ingred_name][['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables]
+        meps_rxcui_ingred = meps_rxcui_ndc_df[meps_rxcui_ndc_df['medication_ingredient_name']==ingredient_name][['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name', 'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables]
         #1
         dcp_dict['patient_count_product'] = meps_rxcui_ingred.groupby(['medication_product_name',  'medication_product_rxcui',  'medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
         dcp_df = pd.DataFrame(dcp_dict['patient_count_product']).reset_index()
@@ -275,52 +339,17 @@ def generate_module(rxcui_ndc_df, rxclass_name):
         #5
         dcp_demographictotal_df['percent_product_patients'] = round(dcp_demographictotal_df['weighted_patient_count_product_demographic']/dcp_demographictotal_df['weighted_patient_count_product_total'], 3)
         #6 TODO: change this column to medication_product_state_name or medication_product_transition_name(?)
-        dcp_demographictotal_df['medication_product_name'] = dcp_demographictotal_df['medication_product_name'].apply(lambda x: normalize_name(state_prefix + x))
-        #Generate product table transition
-        lookup_table_transition = []
-        lookup_table_name = filename + '.' + output
-        module_medication_product_name_list = dcp_demographictotal_df['medication_product_name'].unique().tolist()
-        for idx, transition in enumerate(module_medication_product_name_list):
-            lookup_table_transition.append({
-                'transition': transition,
-                'default_probability': '1' if idx == 1 else '0',
-                'lookup_table_name': lookup_table_name
-            })
-        state_name = state_prefix + ingred_name
-        states_dict[state_name] = {
-            'type': 'Simple',
-            'name': state_name,
-            'lookup_table_transition': lookup_table_transition
-        }
+        dcp_demographictotal_df['medication_product_transition_name'] = dcp_demographictotal_df['medication_product_name'].apply(lambda x: normalize_name(state_prefix + x))
         #7
         dcp_dict['percent_product_patients'] = dcp_demographictotal_df
         if len(groupby_demographic_variables) > 0:
-            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_product_name', values='percent_product_patients').reset_index()
+            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'].reset_index().pivot(index= groupby_demographic_variables, columns = 'medication_product_transition_name', values='percent_product_patients').reset_index()
         else:
-            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'][['medication_product_name', 'percent_product_patients']].set_index('medication_product_name').T
+            dcp_dict['percent_product_patients'] = dcp_dict['percent_product_patients'][['medication_product_transition_name', 'percent_product_patients']].set_index('medication_product_transition_name').T
         
         #Fill NULLs and save as CSV 
         dcp_dict['percent_product_patients'].fillna(0, inplace=True)
-        output_df(dcp_dict['percent_product_patients'], output=output, filename=filename)
+        product_distribution_df = dcp_dict['percent_product_patients']
+        output_df(product_distribution_df, output=distribution_file_type, filename=filename)
 
-    #Generate MedicationOrder states
-    medication_products = list(meps_rxcui[['medication_product_name', 'medication_product_rxcui']].to_records(index=False))
-    for (medication_product_name, medication_product_rxcui) in medication_products:
-        state_name = normalize_name(state_prefix + medication_product_name)
-        attribute = normalize_name(rxclass_name + '_prescription')
-        codes = {
-            'system': 'RxNorm',
-            'code': medication_product_rxcui,
-            'display': medication_product_name
-        }
-        states_dict[state_name] = {
-            'type': 'MedicationOrder',
-            'assign_to_attribute': attribute,
-            'codes': [ codes ],
-            'direct_transition': 'Terminal',
-            'name': state_name
-        }
-
-    module_dict['states'] = states_dict
-    
-    output_json(module_dict)
+    return dcp_dict
