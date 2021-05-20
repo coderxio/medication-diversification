@@ -167,7 +167,7 @@ def generate_module_json(meps_rxcui_ndc_df):
     chronic = config['chronic']
     refills = config['refills']
 
-    assign_to_attribute = normalize_name(module_name + '_prescription', case = 'lower')
+    assign_to_attribute = normalize_name(module_name + '_prescription', case = 'lower') if config['assign_to_attribute'] == '' else config['assign_to_attribute']
     reason = assign_to_attribute
 
     module_dict = {}

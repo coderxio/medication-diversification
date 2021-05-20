@@ -3,6 +3,7 @@ MEPS_CONFIG = {
     "demographic_distribution_flags": {"age": "Y", "gender": "Y", "state": "Y"},
     "meps_year": "18",
     "module_name": "Module Name", # required (text)
+    "assign_to_attribute": "", # optional (text)
     "as_needed": None, # optional (boolean)
     "chronic": None, # optional (boolean)
     "refills": 0, # optional (numeric) default is 0
