@@ -314,13 +314,13 @@ def generate_module_json(meps_rxcui_ndc_df):
         if prescription:
             states_dict[state_name]['prescription'] = prescription
 
-    module_dict['states'] = states_dict
-
     # Terminal state (required)
     states_dict['Terminal'] = {
         'remarks': 'Made with (</>) by CodeRx',
         'type': 'Terminal'
     }
+
+    module_dict['states'] = states_dict
     
     filename = module_name + '_medication'
     output_json(module_dict, filename=filename)
