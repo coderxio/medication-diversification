@@ -94,9 +94,9 @@ src/
 │  │  │  ├─ ...
 ```
 
-## Contribution Guide
+## Contribution guide
 1. Setup a venv with `python -m venv venv`, this will create a a directory called venv in your current working directory
-2. Activate your venv with `source venv/bin/activate` or on windows `venv/Scripts/Activate`
+2. Activate your venv with `source venv/bin/activate` or on windows `venv/scripts/activate`
 3. Install MDT with `pip install -e .`, this sets up mdt as an installed editable package
 4. Run MDT with `python -m mdt.run_mdt D007037 may_treat`
     - `run_mdt` takes two system args the rxclass_id and rxclass_rela these must be specified
