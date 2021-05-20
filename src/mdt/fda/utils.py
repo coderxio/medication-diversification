@@ -3,10 +3,10 @@ from pathlib import Path
 
 
 def get_dataset(
-    dest = Path.cwd(),
-    handler = None
+    dest=Path.cwd(),
+    handler=None
 ):
-    url = f'https://www.accessdata.fda.gov/cder/ndctext.zip'
+    url = 'https://www.accessdata.fda.gov/cder/ndctext.zip'
     response = requests.get(url)
 
     if handler:
