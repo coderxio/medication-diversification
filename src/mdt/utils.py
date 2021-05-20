@@ -162,12 +162,11 @@ def generate_module_json(meps_rxcui_ndc_df):
     state_prefix = config['state_prefix']
     ingredient_distribution_suffix = config['ingredient_distribution_suffix']
     product_distribution_suffix = config['product_distribution_suffix']
-    distribution_file_type = config['distribution_file_type']
     as_needed = config['as_needed']
     chronic = config['chronic']
     refills = config['refills']
 
-    assign_to_attribute = normalize_name(module_name + '_prescription', case = 'lower') if config['assign_to_attribute'] == '' else config['assign_to_attribute']
+    assign_to_attribute = normalize_name(module_name + '_prescription', case = 'lower') if config['assign_to_attribute'] == '' else normalize_name(config['assign_to_attribute'], 'lower')
     reason = assign_to_attribute
 
     module_dict = {}
@@ -246,7 +245,7 @@ def generate_module_json(meps_rxcui_ndc_df):
 
     medication_ingredient_transition_name_list = meps_rxcui_ndc_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
     filename = module_name + ingredient_distribution_suffix
-    lookup_table_name = filename + '.' + distribution_file_type
+    lookup_table_name = filename + '.csv'
     lookup_table_transition = []
     for idx, transition in enumerate(medication_ingredient_transition_name_list):
         lookup_table_transition.append({
@@ -271,7 +270,7 @@ def generate_module_json(meps_rxcui_ndc_df):
             '======================================================================',
         ]
         filename = module_name + '_' + ingredient_name + product_distribution_suffix
-        lookup_table_name = filename + '.' + distribution_file_type
+        lookup_table_name = filename + '.csv'
         lookup_table_transition = []
 
         product_transition_state_remarks.append('Products in lookup table:')
@@ -341,7 +340,7 @@ def generate_module_json(meps_rxcui_ndc_df):
 
     module_dict['states'] = states_dict
     
-    filename = module_name + '_medication'
+    filename = normalize_name(module_name + '_medication', 'lower')
     output_json(module_dict, filename=filename)
 
 
@@ -356,7 +355,6 @@ def generate_module_csv(meps_rxcui_ndc_df):
     state_prefix = config['state_prefix']
     ingredient_distribution_suffix = config['ingredient_distribution_suffix']
     product_distribution_suffix = config['product_distribution_suffix']
-    distribution_file_type = config['distribution_file_type']
 
     groupby_demographic_variables = []
     for k, v in demographic_distribution_flags.items():
@@ -390,7 +388,7 @@ def generate_module_csv(meps_rxcui_ndc_df):
     6. Add the 'prescribe_' prefix to the medication_ingredient_name (e.g., 'prescribe_fluticasone') 
     7. Pivot the dataframe to transpose medication_ingredient_names from rows to columns """
 
-    filename = module_name + ingredient_distribution_suffix
+    filename = normalize_name(module_name + ingredient_distribution_suffix, 'lower')
     # 1
     dcp_dict['patient_count_ingredient'] = meps_rxcui_ndc_df[['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables].groupby(['medication_ingredient_name',  'medication_ingredient_rxcui', 'person_weight']+groupby_demographic_variables)['DUPERSID'].nunique()
     dcp_df = pd.DataFrame(dcp_dict['patient_count_ingredient']).reset_index()
@@ -420,7 +418,7 @@ def generate_module_csv(meps_rxcui_ndc_df):
     # Fill NULLs and save as CSV
     dcp_dict['percent_ingredient_patients'].fillna(0, inplace=True)
     ingredient_distribution_df = dcp_dict['percent_ingredient_patients']
-    output_df(ingredient_distribution_df, output=distribution_file_type, filename=filename)
+    output_df(ingredient_distribution_df, output='csv', filename=filename)
 
     # Product Name Distribution (Transition 2)
     """Numerator = product_name 
@@ -430,7 +428,7 @@ def generate_module_csv(meps_rxcui_ndc_df):
 
 
     for ingredient_name in medication_ingredient_list:
-        filename = module_name + '_' + ingredient_name + product_distribution_suffix
+        filename = normalize_name(module_name + '_' + ingredient_name + product_distribution_suffix, 'lower')
         # 0
         meps_rxcui_ingred = meps_rxcui_ndc_df[meps_rxcui_ndc_df['medication_ingredient_name']==ingredient_name][['medication_product_name',  'medication_product_rxcui', 'medication_ingredient_name', 'medication_ingredient_rxcui', 'person_weight', 'DUPERSID']+groupby_demographic_variables]
         # 1
@@ -457,6 +455,6 @@ def generate_module_csv(meps_rxcui_ndc_df):
         # Fill NULLs and save as CSV 
         dcp_dict['percent_product_patients'].fillna(0, inplace=True)
         product_distribution_df = dcp_dict['percent_product_patients']
-        output_df(product_distribution_df, output=distribution_file_type, filename=filename)
+        output_df(product_distribution_df, output='csv', filename=filename)
 
     return dcp_dict
