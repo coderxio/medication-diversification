@@ -163,6 +163,12 @@ def generate_module_json(meps_rxcui_ndc_df):
     ingredient_distribution_suffix = config['ingredient_distribution_suffix']
     product_distribution_suffix = config['product_distribution_suffix']
     distribution_file_type = config['distribution_file_type']
+    as_needed = config['as_needed']
+    chronic = config['chronic']
+    refills = config['refills']
+
+    assign_to_attribute = normalize_name(module_name + '_prescription', case = 'lower')
+    reason = assign_to_attribute
 
     module_dict = {}
 
@@ -170,9 +176,11 @@ def generate_module_json(meps_rxcui_ndc_df):
     module_dict['remarks'] = [
         'This submodule prescribes a medication based on distributions of',
         '<<INPUTS FROM CONFIG>>.', # i.e. age, gender, state
+        '',
         'IT IS UP TO THE CALLING MODULE TO END THIS MEDICATION BY ATTRIBUTE.',
         'All medications prescribed in this module are assigned to the attribute',
-        '<<ATTRIBUTE NAME>>.',
+        assign_to_attribute,
+        '',
         'Input query for this submodule:',
         '  Include: ',
         '    RxClass: <<RXCLASS INCLUDES>>',
@@ -180,12 +188,15 @@ def generate_module_json(meps_rxcui_ndc_df):
         '  Exclude:',
         '    RxClass: <<RXCLASS EXCLUDES>>',
         '    RxNorm: <<RXCUI EXCLUDES>>',
+        '',
         'Reference links:',
         '  RxClass: https://mor.nlm.nih.gov/RxClass/',
         '  RxNorm: https://www.nlm.nih.gov/research/umls/rxnorm/index.html',
         '  RxNav: https://mor.nlm.nih.gov/RxNav/',
         '  MEPS: https://meps.ahrq.gov/mepsweb/data_stats/MEPS_topics.jsp?topicid=46Z-1',
-        '  FDA: https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory'
+        '  FDA: https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory',
+        '',
+        'Made with (</>) by the CodeRx Medication Diversification Tool'
     ]
     # NOTE: not sure the difference between 1 and 2... I think 2 is the most recent version(?)
     module_dict['gmf_version'] = 2
@@ -197,6 +208,11 @@ def generate_module_json(meps_rxcui_ndc_df):
     states_dict['Initial'] = {
         'type': 'Initial',
         'direct_transition': state_prefix + 'Ingredient'
+    }
+
+    # Terminal state (required)
+    states_dict['Terminal'] = {
+        'type': 'Terminal'
     }
 
     # Add this to Initial state?
@@ -219,7 +235,7 @@ def generate_module_json(meps_rxcui_ndc_df):
     # Generate ingredient table transition
     ingredient_transition_state_remarks = [
         '======================================================================',
-        ' MEDICATION INGREDIENT TRANSITION STATE                               ',
+        ' MEDICATION INGREDIENT TABLE TRANSITION                               ',
         '======================================================================',
     ]
     ingredient_transition_state_remarks.append('Ingredients in lookup table:')
@@ -251,7 +267,7 @@ def generate_module_json(meps_rxcui_ndc_df):
     for ingredient_name in medication_ingredient_name_list:
         product_transition_state_remarks = [
             '======================================================================',
-            ' ' + ingredient_name.upper() + ' MEDICATION PRODUCT TRANSITION STATE  ',
+            ' ' + ingredient_name.upper() + ' MEDICATION PRODUCT TABLE TRANSITION  ',
             '======================================================================',
         ]
         filename = module_name + '_' + ingredient_name + product_distribution_suffix
@@ -287,38 +303,41 @@ def generate_module_json(meps_rxcui_ndc_df):
 
     medication_order_state_remarks = [
         '======================================================================',
-        ' BEGIN MEDICATION ORDER TRANSITION STATES  ',
+        ' BEGIN MEDICATION ORDER STATES                                        ',
         '======================================================================',
     ]
     for idx, (medication_product_name, medication_product_rxcui) in enumerate(medication_products_list):
         state_name = normalize_name(state_prefix + medication_product_name)
-        attribute = normalize_name(module_name + '_prescription', case = 'lower')
+        refills = refills if isinstance(refills, int) else 0
         codes = {
             'system': 'RxNorm',
             'code': medication_product_rxcui,
             'display': medication_product_name
         }
+        prescription = {
+            'refills': refills
+        }
+        if as_needed in (True, False):
+            prescription['as_needed'] = as_needed
         states_dict[state_name] = {
             'name': state_name,
             'type': 'MedicationOrder',
-            'assign_to_attribute': attribute,
+            'assign_to_attribute': assign_to_attribute,
+            'reason': reason,
             'codes': [ codes ],
-            'direct_transition': 'Terminal',
+            'prescription': prescription,
+            'direct_transition': 'Terminal'
         }
+        if chronic in (True, False):
+            states_dict[state_name]['chronic'] = chronic
 
         if idx == 0:
             medication_order_state_remarks_dict = {'remarks': medication_order_state_remarks}
             states_dict[state_name] = {**medication_order_state_remarks_dict, **states_dict[state_name]}
 
-        prescription = get_prescription_details(medication_product_rxcui)
-        if prescription:
-            states_dict[state_name]['prescription'] = prescription
-
-    # Terminal state (required)
-    states_dict['Terminal'] = {
-        'remarks': 'Made with (</>) by CodeRx',
-        'type': 'Terminal'
-    }
+        prescription_details = get_prescription_details(medication_product_rxcui)
+        if prescription_details:
+            states_dict[state_name]['prescription'] = {**states_dict[state_name]['prescription'], **prescription_details}
 
     module_dict['states'] = states_dict
     
