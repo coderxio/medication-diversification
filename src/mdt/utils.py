@@ -178,7 +178,7 @@ def generate_module_json(meps_rxcui_ndc_df):
         '',
         'IT IS UP TO THE CALLING MODULE TO END THIS MEDICATION BY ATTRIBUTE.',
         'All medications prescribed in this module are assigned to the attribute',
-        assign_to_attribute,
+        '\'' + assign_to_attribute + '\'.',
         '',
         'Input query for this submodule:',
         '  Include: ',
@@ -206,30 +206,25 @@ def generate_module_json(meps_rxcui_ndc_df):
     # NOTE: if we change to conditional to check for existence of medication, channge direct_transition to transition
     states_dict['Initial'] = {
         'type': 'Initial',
-        'direct_transition': state_prefix + 'Ingredient'
+        'conditional_transition': [
+            {
+                'condition': {
+                    'condition_type': 'Attribute',
+                    'attribute': assign_to_attribute,
+                    'operator': 'is nil'
+                },
+                'transition': normalize_name(state_prefix + 'Ingredient')
+            },
+            {
+                'transition': 'Terminal'
+            }
+        ]
     }
 
     # Terminal state (required)
     states_dict['Terminal'] = {
         'type': 'Terminal'
     }
-
-    # Add this to Initial state?
-    """
-      "conditional_transition": [
-        {
-          "condition": {
-            "condition_type": "Attribute",
-            "attribute": "medication_prescription",
-            "operator": "is nil"
-          },
-          "transition": "Prescribe_Medication_Medication"
-        },
-        {
-          "transition": "Terminal"
-        }
-      ]
-    """
 
     # Generate ingredient table transition
     ingredient_transition_state_remarks = [
