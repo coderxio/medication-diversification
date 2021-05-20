@@ -216,11 +216,6 @@ def generate_module_json(meps_rxcui_ndc_df):
       ]
     """
 
-    # Terminal state (required)
-    states_dict['Terminal'] = {
-        'type': 'Terminal'
-    }
-
     # Generate ingredient table transition
     ingredient_transition_state_remarks = [
         '======================================================================',
@@ -320,6 +315,12 @@ def generate_module_json(meps_rxcui_ndc_df):
             states_dict[state_name]['prescription'] = prescription
 
     module_dict['states'] = states_dict
+
+    # Terminal state (required)
+    states_dict['Terminal'] = {
+        'remarks': 'Made with (</>) by CodeRx'
+        'type': 'Terminal',
+    }
     
     filename = module_name + '_medication'
     output_json(module_dict, filename=filename)
