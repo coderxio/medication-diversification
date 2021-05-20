@@ -318,8 +318,8 @@ def generate_module_json(meps_rxcui_ndc_df):
 
     # Terminal state (required)
     states_dict['Terminal'] = {
-        'remarks': 'Made with (</>) by CodeRx'
-        'type': 'Terminal',
+        'remarks': 'Made with (</>) by CodeRx',
+        'type': 'Terminal'
     }
     
     filename = module_name + '_medication'
