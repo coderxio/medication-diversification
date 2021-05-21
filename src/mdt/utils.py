@@ -61,6 +61,10 @@ def get_prescription_details(rxcui):
     rx_qty = int(selected_rx_details['RXQUANTY'])
     rx_ds = int(selected_rx_details['RXDAYSUP'])
 
+    # TODO: maybe do this in the filtered_df step above?
+    if rx_qty == 0 or rx_ds == 0:
+        return False
+
     # See FHIR Timing reference for how these variables are calculated
     # http://hl7.org/fhir/DSTU2/datatypes.html#Timing
     frequency = int(rx_qty / rx_ds) if rx_qty >= rx_ds else 1
