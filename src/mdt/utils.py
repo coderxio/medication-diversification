@@ -1,9 +1,18 @@
 import json
 import re
 import pandas as pd
+from pathlib import Path
 from mdt.config import MEPS_CONFIG
-from mdt.database import db_query
+from mdt.database import db_query, path_manager
 from mdt import meps
+
+
+def path_manager(*args):
+    """creates folder path if it does not exist"""
+    p = Path.cwd().joinpath(*args)
+    if not p.exists():
+        p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 def read_json(file_name):
@@ -110,17 +119,18 @@ def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
     return filtered_rxcui_ndc_df
 
 
-def output_df(df,output='csv', filename='df_output'):
+def output_df(df, output='csv', filename='df_output'):
     """Outputs a dataframe to a csv of clipboard if you use the output=clipboard arguement"""
-
+    filename = filename + '.' + output
     if output == 'clipboard':
         df.to_clipboard(index=False, excel=True)
     elif output == 'csv':
-        df.to_csv('data/'+filename+'.csv', index=False)
+        df.to_csv(path_manager('output') / filename, index=False)
 
 
 def output_json(data, filename='json_output'):
-    with open('data/'+filename+'.json', 'w', encoding='utf-8') as f:
+    filename = filename + '.json'
+    with open(path_manager('output') / filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 

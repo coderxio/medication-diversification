@@ -7,19 +7,17 @@ import sqlite3
 import pandas as pd
 
 
-def to_data():
-    """creates paths to data folder, making directory if not present"""
-    path = Path.cwd() / 'data'
-    try:
-        path.mkdir(exist_ok=False)
-    except:
-        pass
-    return path
+def path_manager(*args):
+    """creates folder path if it does not exist"""
+    p = Path.cwd().joinpath(*args)
+    if not p.exists():
+        p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 def create_mdt_con():
-    """create defualt connection to the data/MDT.db database. If database does not exist it creates it."""
-    conn = sqlite3.connect(to_data() / 'MDT.db')
+    """create defualt connection to the MDT.db in data folder."""
+    conn = sqlite3.connect(path_manager('data') / 'MDT.db')
     return conn
 
 
@@ -38,31 +36,24 @@ def sql_create_table(table_name, df, conn=None):
 
 
 def db_query(query_str, conn=None):
-    """Sends Query to DB and returns results as a dataframe"""
-
+    """Sends query to DB and returns results as a dataframe"""
     if conn is None:
         conn = create_mdt_con()
-
     return pd.read_sql(query_str, conn)
 
 
 def read_sql_string(file_name):
     """reads the contents of a sql script into a string for python to use in a query"""
-
     fd = open(file_name, 'r')
     query_str = fd.read()
     fd.close()
-
     print('Read {0} file as string'.format(file_name))
-
     return query_str
 
 
 def load_rxnorm():
     """downloads and loads RxNorm dataset into database"""
-
     z = zipfile.ZipFile(rxnorm.utils.get_dataset(handler=io.BytesIO))
-
     col_names = ['RXCUI', 'LAT', 'TS', 'LUI', 'STT', 'SUI', 'ISPREF', 'RXAUI', 'SAUI', 'SCUI', 'SDUI', 'SAB', 'TTY', 'CODE', 'STR', 'SRL', 'SUPPRESS', 'CVF', 'test']
     rxnconso = pd.read_csv(
         z.open('rrf/RXNCONSO.RRF'),
