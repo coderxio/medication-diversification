@@ -42,6 +42,18 @@ def db_query(query_str, conn=None):
     return pd.read_sql(query_str, conn)
 
 
+def check_table(tablename, conn=None):
+    """checks if table exists in database"""
+    if conn is None:
+        conn = create_mdt_con()
+    c = conn.cursor()
+    c.execute(f"SELECT count(name) FROM sqlite_master WHERE type='table' AND name='{tablename}'")
+    if c.fetchone()[0]==1:
+        return True
+    else:
+        return False
+
+
 def read_sql_string(file_name):
     """reads the contents of a sql script into a string for python to use in a query"""
     fd = open(file_name, 'r')
