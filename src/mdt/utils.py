@@ -7,14 +7,6 @@ from mdt.database import db_query, path_manager
 from mdt import meps
 
 
-def path_manager(*args):
-    """creates folder path if it does not exist"""
-    p = Path.cwd().joinpath(*args)
-    if not p.exists():
-        p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def read_json(file_name):
     # Opening JSON file
     f = open(file_name,)
