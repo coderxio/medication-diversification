@@ -5,41 +5,39 @@ from mdt import rxnorm
 from mdt.utils import (
     rxcui_ndc_matcher,
     filter_by_df,
+    filter_by_ingredient_tty,
     output_df,
     get_meps_rxcui_ndc_df,
     generate_module_csv,
     generate_module_json
 )
+from mdt.config import MEPS_CONFIG
 
 
-# TODO: replace this with config settings or JSON input
-# For testing: D007037 = Hypothyroidism, D001249 = Asthma
-
-
-def main(rxclass_id, rxclass_rela):
+def main():
 
     if not (Path.cwd() / "data" / "MDT.db").exists():
         load_rxnorm()
         load_meps()
         load_fda()
 
-    # Call RxClass FindClassesById API to get class info (name primarily) of the specified class
-    rxclass_response = rxnorm.utils.rxapi_get_requestor(
-        rxnorm.rxclass.rxclass_findclassesbyid_payload(rxclass_id)
-    )
-    rxclass_names = rxnorm.utils.json_extract(rxclass_response, "className")
-    # TODO: allow for name override in input settings
-    # TODO: build in better error handling if rxclass_id is garbage or returns no info
-    rxclass_name = rxclass_names[0] if len(rxclass_names) > 0 else "unspecified"
+    # TODO: replace this with the actual user settings file
+    settings = MEPS_CONFIG
 
-    # Call RxClass GetClassMember API to get members of the specified class with specified relationship(s)
-    rxclass_response = rxnorm.utils.rxapi_get_requestor(
-        rxnorm.rxclass.rxclass_getclassmember_payload(rxclass_id, rxclass_rela)
-    )
+    # Call RxClass API to get all distinct members from multiple class ID / relationship pairs
+    # Do this for include + add individual RXCUIs to include
+    # Do this for exclude + add individual RXCUIs to exclude
+    # Remove exclude RXCUIs from include RXCUI list
+    rxcui_include_list = rxnorm.rxclass.rxclass_get_rxcuis(settings['rxclass_include'])
+    rxcui_include_list += settings['rxcui_include']
+
+    rxcui_exclude_list = rxnorm.rxclass.rxclass_get_rxcuis(settings['rxclass_exclude'])
+    rxcui_exclude_list += settings['rxcui_exclude']
+
+    rxcui_ingredient_list = [i for i in rxcui_include_list if i not in rxcui_exclude_list]
 
     # First, get all medications that contain one of the ingredient RXCUIs
     # This will result in duplicate NDCs and potentially no MINs
-    rxcui_ingredient_list = rxnorm.utils.json_extract(rxclass_response, "rxcui")
     rxcui_ingredient_df = rxcui_ndc_matcher(rxcui_ingredient_list)
 
     # Second, get all of the medications that contain one of the product RXCUIs in the df above
@@ -70,9 +68,11 @@ def main(rxclass_id, rxclass_rela):
     # If list of DFGs or DFs is empty, then nothing is filtered out
     # https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html
 
-    # Add in after adding dfg info
-    dfg_df_list = []
-    rxcui_ndc_df = filter_by_df(rxcui_ndc_df, dfg_df_list)
+    # Filter by dose form (DF) or dose form group (DFG)
+    rxcui_ndc_df = filter_by_df(rxcui_ndc_df, settings['dfg_df_filter'])
+
+    # Filter by ingredient term type (TTY = 'IN' or 'MIN')
+    rxcui_ndc_df = filter_by_ingredient_tty(rxcui_ndc_df, settings['ingredient_tty_filter'])
 
     #Saves df to csv
     output_df(rxcui_ndc_df, filename='rxcui_ndc_df_output')
@@ -87,6 +87,4 @@ def main(rxclass_id, rxclass_rela):
     generate_module_json(meps_rxcui_ndc_df)
 
 if __name__ == "__main__":
-    rxclass_id = sys.argv[1]
-    rxclass_rela = sys.argv[2]
-    main(rxclass_id, rxclass_rela)
+    main()

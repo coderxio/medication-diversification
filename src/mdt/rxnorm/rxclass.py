@@ -1,17 +1,4 @@
-from .utils import payload_constructor
-
-
-def rxclass_findclassesbyid_payload(class_id):
-    """Generates and returns URLs as strings for hitting the RxClass API function FindClassesById."""
-
-    param_dict = {'classId': class_id}
-
-    payload = payload_constructor(
-        'https://rxnav.nlm.nih.gov/REST/rxclass/class/byId.json?',
-        param_dict
-    )
-
-    return payload
+from .utils import rxapi_get_requestor, json_extract, payload_constructor
 
 
 def rxclass_getclassmember_payload(class_id, relation, ttys=['IN', 'MIN']):
@@ -73,3 +60,23 @@ def rxclass_getclassmember_payload(class_id, relation, ttys=['IN', 'MIN']):
     )
 
     return payload
+
+
+def rxclass_get_rxcuis(rxclass_query_list):
+    """Returns a distinct list of rxcuis from multiple RxClass queries"""
+
+    rxcui_list = []
+    for rxclass_query in rxclass_query_list:
+        class_id = rxclass_query['class_id']
+        relationship = rxclass_query['relationship']
+
+        rxclass_response = rxapi_get_requestor(
+            rxclass_getclassmember_payload(class_id, relationship)
+        )
+        rxclass_member_list = json_extract(rxclass_response, "rxcui")
+        rxcui_list += rxclass_member_list
+    
+    # Remove dupliate RXCUIs
+    rxcui_list = list(set(rxcui_list))
+    
+    return rxcui_list
