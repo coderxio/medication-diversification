@@ -63,7 +63,7 @@ def rxclass_getclassmember_payload(class_id, relation, ttys=['IN', 'MIN']):
 
 
 def rxclass_get_rxcuis(rxclass_query_list):
-    """Returns a distinct list of rxcuis from multiple RxClass queries"""
+    """Returns a distinct list of RXCUIs from multiple RxClass queries"""
 
     rxcui_list = []
     for rxclass_query in rxclass_query_list:
@@ -76,7 +76,7 @@ def rxclass_get_rxcuis(rxclass_query_list):
         rxclass_member_list = json_extract(rxclass_response, "rxcui")
         rxcui_list += rxclass_member_list
     
-    # Remove dupliate RXCUIs
+    # Remove duplicate RXCUIs
     rxcui_list = list(set(rxcui_list))
     
     return rxcui_list
