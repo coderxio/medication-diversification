@@ -11,6 +11,7 @@ MEPS_CONFIG = {
         {
             "class_id": "R01AD",
             "relationship": "ATC"
+        }
     ],
     "rxclass_exclude": [],
     "rxcui_include": ["435"],
