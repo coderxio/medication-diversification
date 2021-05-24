@@ -7,20 +7,10 @@ MEPS_CONFIG = {
     "ingredient_distribution_suffix": "_ingredient_distribution",
     "product_distribution_suffix": "_product_distribution",
     "distribution_file_type": "csv",
-    "rxclass_include": [
-        {
-            "class_id": "R01AD",
-            "relationship": "ATC"
-        }
-    ],
+    "rxclass_include": [],
     "rxclass_exclude": [],
-    "rxcui_include": [],
-    "rxcui_exclude": ["25120"],
+    "rxcui_include": ["435"],
+    "rxcui_exclude": [],
     "ingredient_tty_filter": "IN",
-    "dfg_df_filter": [
-        "Dry Powder Inhaler",
-        "Inhalation Powder",
-        "Inhalation Solution",
-        "Metered Dose Inhaler"
-        ]
+    "dfg_df_filter": []
 }
