@@ -5,6 +5,14 @@ The Medication Diversification Tool (MDT) leverages publicly-available, governme
 The MDT automates the process for finding relevant medication codes and calculating a distribution of medications, using medication classification dictionaries from RxClass and population-level prescription data from the Medical Expenditure Panel Survey (MEPS). The medication distributions can be tailored to specific patient demographics (e.g., age, gender, state of residence) and combined with Synthea data to generate medication records for a sample patient population.
 
 
+## User-defined settings
+| Setting | Type | Description |
+| ------- | ---- | ----------- |
+| `module_name` | `string` | The name of your module.  Also becomes part of the `assign_to_attribute` property by default. |
+| `assign_to_attribute` | `string` | **(optional)** The name of the `"attribute"` to assign this state to. Defaults to `<<module_name>>_prescription`. |
+| `chronic` | `boolean` | **(optional)** If `true`, a medication is considered a chronic medication for a chronic condition. This will cause Synthea to reissue the same medication as a new prescription AND discontinue the old prescription at each wellness encounter. |
+| `as_needed` | `boolean` | **(optional)** If `true`, the medication may be taken as needed instead of on a specific schedule. |
+
 ## How to replace a MedicationOrder with a MDT submodule
 To replace a MedicationOrder with one of our MDT submodules, replace the [MedicationOrder state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework:-States#medicationorder) with a [CallSubmodule state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#callsubmodule).
 
@@ -86,9 +94,9 @@ src/
 │  │  │  ├─ ...
 ```
 
-## Contribution Guide
+## Contribution guide
 1. Setup a venv with `python -m venv venv`, this will create a a directory called venv in your current working directory
-2. Activate your venv with `source venv/bin/activate` or on windows `venv/Scripts/Activate`
+2. Activate your venv with `source venv/bin/activate` or on windows `venv/scripts/activate`
 3. Install MDT with `pip install -e .`, this sets up mdt as an installed editable package
 4. Run MDT with `python -m mdt.run_mdt D007037 may_treat`
     - `run_mdt` takes two system args the rxclass_id and rxclass_rela these must be specified
