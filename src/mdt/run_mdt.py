@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from mdt.database import load_rxnorm, load_meps, load_fda
+from mdt.database import load_rxnorm, load_meps, load_fda, check_table
 from mdt import rxnorm
 from mdt.utils import (
     rxcui_ndc_matcher,
@@ -18,9 +18,11 @@ from mdt.utils import (
 
 def main(rxclass_id, rxclass_rela):
 
-    if not (Path.cwd() / "data" / "MDT.db").exists():
+    if check_table('rxcui_ndc') == False:
         load_rxnorm()
+    if check_table('meps_demographics') == False:
         load_meps()
+    if check_table('package') == False:
         load_fda()
 
     # Call RxClass FindClassesById API to get class info (name primarily) of the specified class
