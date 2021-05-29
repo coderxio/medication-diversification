@@ -9,5 +9,22 @@ MEPS_CONFIG = {
     "refills": 0, # optional (numeric) default is 0
     "state_prefix": "Prescribe_",
     "ingredient_distribution_suffix": "_ingredient_distribution",
-    "product_distribution_suffix": "_product_distribution"
+    "product_distribution_suffix": "_product_distribution",
+    "distribution_file_type": "csv",
+    "rxclass_include": [
+        {
+            "class_id": "R01AD",
+            "relationship": "ATC"
+        }
+    ],
+    "rxclass_exclude": [],
+    "rxcui_include": ["435"],
+    "rxcui_exclude": [],
+    "ingredient_tty_filter": "IN",
+    "dfg_df_filter": [
+        "Dry Powder Inhaler",
+        "Inhalation Powder",
+        "Inhalation Solution",
+        "Metered Dose Inhaler"
+    ]
 }

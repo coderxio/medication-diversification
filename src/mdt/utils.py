@@ -114,6 +114,15 @@ def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
 
     return filtered_rxcui_ndc_df
 
+def filter_by_ingredient_tty(rxcui_ndc_df, ingredient_tty_filter):
+    """Outputs a dataframe filtered by ingredient TTY"""
+    
+    if ingredient_tty_filter not in ('IN', 'MIN'):
+        return rxcui_ndc_df
+    
+    filtered_rxcui_ndc_df = rxcui_ndc_df[rxcui_ndc_df['medication_ingredient_tty'] == ingredient_tty_filter]
+
+    return filtered_rxcui_ndc_df
 
 def output_df(df, output='csv', filename='df_output'):
     """Outputs a dataframe to a csv of clipboard if you use the output=clipboard arguement"""
