@@ -28,6 +28,7 @@ rxcui:
         # - somecui
     exclude:
         # - somecui
+ingredient_tty_filter: IN
 dosage_filter:
     # - Dry Powder Inhaler
 meps:
