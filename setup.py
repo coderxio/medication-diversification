@@ -21,7 +21,8 @@ setup(
     python_requires='>=3.7, <4',
     install_requires=[
         'requests',
-        'pandas'
+        'pandas',
+        'ruamel.yaml'
     ],  # Optional
 
     # If there are data files included in your packages that need to be
