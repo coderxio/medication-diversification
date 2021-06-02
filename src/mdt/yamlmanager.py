@@ -89,3 +89,12 @@ def create_mdt_settings(path=Path.cwd()):
     if not settings.exists():
         data = yaml.load(MDT_SETTINGS)
         yaml.dump(data, settings)
+
+
+def create_module_settings(module_name, path=Path.cwd()):
+    module = path / module_name
+
+    if not module.exists():
+        module.mkdir(parents=True)
+        data = yaml.load(MODULE_SETTINGS)
+        yaml.dump(data, (module / 'settings.yaml'))
