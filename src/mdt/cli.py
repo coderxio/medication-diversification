@@ -7,7 +7,8 @@ from mdt.database import (
     check_table,
 )
 from mdt.yamlmanager import (
-    create_mdt_settings
+    create_mdt_settings,
+    create_module_settings,
 )
 
 
@@ -25,8 +26,8 @@ def init_db(args):
 
 
 def module_create(args):
-    print(args)
-    print('module_create')
+    arguments = vars(args)
+    create_module_settings(arguments['module_name'])
 
 
 def module_build(args):
