@@ -7,7 +7,8 @@ yaml = YAML()
 MDT_SETTINGS = '''\
 # Base Application settings for module generation
 state_prefix: Prescribe_
-ingredient_distribution_suffix: _product_distribution
+ingredient_distribution_suffix: _ingredient_distribution
+product_distribution_suffix: _product_distribution
 '''
 
 MODULE_SETTINGS = '''\
