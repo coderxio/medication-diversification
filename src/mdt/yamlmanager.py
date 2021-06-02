@@ -41,6 +41,9 @@ meps:
 '''
 
 config_schema = {
+    'state_prefix': ((str,), ''),
+    'ingredient_distribution_suffix': ((str,), ''),
+    'product_distribution_suffix': ((str,), ''),
     'module': {
         'as_needed': ((bool,), ''),
         'chronic': ((bool,), ''),
@@ -50,6 +53,7 @@ config_schema = {
         'include': ((list, type(None)), ''),
         'exclude': ((list, type(None)), ''),
     },
+    'ingredient_tty_filter': ((str,), 'must be either IN, MIN'),
     'dosage_filter': ((list, type(None)), ''),
     'meps': {
         'age': ((list,), "['0-3']"),
