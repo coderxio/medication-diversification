@@ -1,3 +1,9 @@
+from pathlib import Path
+from ruamel.yaml import YAML
+
+yaml = YAML()
+
+
 MDT_SETTINGS = '''\
 # Base Application settings for module generation
 state_prefix: Prescribe_
@@ -75,3 +81,11 @@ def validate_config(config, schema=config_schema):
 
     if err:
         raise ValueError(f'Config file validation error\n{sep.join(err)}')
+
+
+def create_mdt_settings(path=Path.cwd()):
+    settings = path / 'mdt-settings.yaml'
+
+    if not settings.exists():
+        data = yaml.load(MDT_SETTINGS)
+        yaml.dump(data, settings)
