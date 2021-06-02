@@ -1,10 +1,27 @@
 import sys
 import argparse
+from mdt.database import (
+    load_rxnorm,
+    load_meps,
+    load_fda,
+    check_table,
+)
+from mdt.yamlmanager import (
+    create_mdt_settings
+)
 
 
 def init_db(args):
-    print(args)
-    print('init db')
+    if check_table('rxcui_ndc') is False:
+        load_rxnorm()
+    elif check_table('meps_demographics') is False:
+        load_meps()
+    elif check_table('package') is False:
+        load_fda()
+    else:
+        print('All Tables are loaded')
+
+    create_mdt_settings()
 
 
 def module_create(args):
