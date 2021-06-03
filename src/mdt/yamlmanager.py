@@ -26,6 +26,7 @@ MODULE_SETTINGS = '''\
 module:
     name:                   # (optional) string, defaults to the camelcase name of the module folder
     assign_to_attribute:    # (optional) string, defaults to the lowercase name of the module folder
+    reason:                 # (optional) string, references a previous ConditionOnset state
     as_needed: false        # boolean, whether the prescription is as needed
     chronic: false          # boolean, whether the prescription is chronic
     refills: 0              # integer, number of refills
@@ -75,6 +76,7 @@ config_schema = {
     'module': {
         'name': ((str, type(None)), ''),
         'assign_to_attribute': ((str, type(None)), ''),
+        'reason': ((str, type(None)), ''),
         'as_needed': ((bool,), ''),
         'chronic': ((bool,), ''),
         'refills': ((int,), ''),

@@ -264,7 +264,7 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
     refills = config['module']['refills']
 
     assign_to_attribute = normalize_name(module_name, case = 'lower') if config['module']['assign_to_attribute'] is None else normalize_name(config['module']['assign_to_attribute'], 'lower')
-    reason = assign_to_attribute
+    reason = config['module']['reason'] if config['module']['reason'] is not None else ''
 
     module_dict = {}
     all_remarks = []
