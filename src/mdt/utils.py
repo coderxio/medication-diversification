@@ -1,10 +1,12 @@
 import json
 import re
 import pandas as pd
+import time
 from pathlib import Path
 from mdt.config import MEPS_CONFIG
-from mdt.database import db_query, path_manager
+from mdt.database import db_query, path_manager, delete_csv_files
 from mdt import meps
+from mdt import rxnorm
 
 
 def read_json(file_name):
@@ -91,16 +93,16 @@ def get_prescription_details(rxcui):
     return prescription
 
 
-def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
+def filter_by_dose_form(rxcui_ndc_df, settings, method='include'):
     """Gets DFs from dfg_df table that match either a DF in the list, or have a DFG that matches a DFG in the list
     If dfg_df list is empty, return the rxcui_ndc_df without filtering
     Select method option of include or exclude....include is default"""
-
-    if len(dfg_df_list) == 0:
+    dose_form_filter_list = settings['dose_form_filter']
+    if dose_form_filter_list[0] is None or len(dose_form_filter_list) == 0:
         return rxcui_ndc_df
 
     dfg_df_df = db_query('SELECT * FROM dfg_df')
-    filtered_dfg_df_df = dfg_df_df[dfg_df_df['dfg'].isin(dfg_df_list) | dfg_df_df['df'].isin(dfg_df_list)]
+    filtered_dfg_df_df = dfg_df_df[dfg_df_df['dfg'].isin(dose_form_filter_list) | dfg_df_df['df'].isin(dose_form_filter_list)]
     df_list = filtered_dfg_df_df['df'].tolist()
 
     if method == 'include':
@@ -114,9 +116,10 @@ def filter_by_df(rxcui_ndc_df, dfg_df_list, method='include'):
 
     return filtered_rxcui_ndc_df
 
-def filter_by_ingredient_tty(rxcui_ndc_df, ingredient_tty_filter):
+def filter_by_ingredient_tty(rxcui_ndc_df, settings):
     """Outputs a dataframe filtered by ingredient TTY"""
-    
+    ingredient_tty_filter = settings['ingredient_tty_filter']
+
     if ingredient_tty_filter not in ('IN', 'MIN'):
         return rxcui_ndc_df
     
@@ -137,6 +140,15 @@ def output_json(data, path=Path.cwd(), filename='json_output'):
     filename = filename + '.json'
     with open(path / filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+
+
+def output_list(data, path=Path.cwd(), filename='log'):
+    timestamp = time.strftime('%Y%m%d-%H%M%S')
+    filename = f'{filename} {timestamp}'
+    filename = f'{filename}.txt'
+    with open(path / filename, 'w', encoding = 'utf-8') as f:
+        for list_item in data:
+            f.write('%s\n' % list_item)
 
 
 def normalize_name(name, case='camel', spaces=False):
@@ -162,14 +174,80 @@ def normalize_name(name, case='camel', spaces=False):
     return name
 
 
-def get_meps_rxcui_ndc_df(rxcui_ndc_df):
+def get_rxcui_ingredient_df(settings):
+    # Call RxClass API to get all distinct members from multiple class ID / relationship pairs
+    # Do this for include + add individual RXCUIs to include
+    # Do this for exclude + add individual RXCUIs to exclude
+    # Remove exclude RXCUIs from include RXCUI list
+    rxcui_include_list = []
+    rxcui_exclude_list = []
+
+    if settings['rxclass']['include'] and settings['rxclass']['include'][0]['class_id']:
+        rxcui_include_list = rxnorm.rxclass.rxclass_get_rxcuis(settings['rxclass']['include'])
+    
+    if settings['rxcui']['include']:
+        rxcui_include_list += settings['rxcui']['include']
+
+    if settings['rxclass']['exclude'] and settings['rxclass']['exclude'][0]['class_id']:
+        rxcui_exclude_list = rxnorm.rxclass.rxclass_get_rxcuis(settings['rxclass']['exclude'])
+    
+    if settings['rxcui']['exclude']:
+        rxcui_exclude_list += settings['rxcui']['exclude']
+
+    rxcui_ingredient_list = [i for i in rxcui_include_list if i not in rxcui_exclude_list]
+    
+    rxcui_ingredient_df = rxcui_ndc_matcher(rxcui_ingredient_list)
+
+    return rxcui_ingredient_df
+
+
+def get_rxcui_product_df(rxcui_ingredient_df, settings):
+    rxcui_product_list = (
+        rxcui_ingredient_df["medication_product_rxcui"].drop_duplicates().tolist()
+    )
+    rxcui_product_df = rxcui_ndc_matcher(rxcui_product_list)
+
+    return rxcui_product_df
+
+
+def get_rxcui_ndc_df(rxcui_product_df, module_name, settings):
+    rxcui_ndc_df = (
+        rxcui_product_df.assign(
+            rn=rxcui_product_df.sort_values(
+                ["medication_ingredient_tty"], ascending=False
+            )
+            .groupby(["medication_ndc"])
+            .cumcount()
+            + 1
+        )
+        .query("rn < 2")
+        .drop(columns=["rn"])
+    )
+
+    # Filter by dose form group (DFG) or dose form (DF)
+    # Function expects the rxcui_ndc_df, a list of DFG or DF names, and a flag for whether to include (default) or exclude
+    # If list of DFGs or DFs is empty, then nothing is filtered out
+    # https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html
+
+    # Filter by dose form (DF) or dose form group (DFG)
+    rxcui_ndc_df = filter_by_dose_form(rxcui_ndc_df, settings)
+
+    # Filter by ingredient term type (TTY = 'IN' or 'MIN')
+    rxcui_ndc_df = filter_by_ingredient_tty(rxcui_ndc_df, settings)
+
+    #Saves df to csv
+    output_df(rxcui_ndc_df, path = path_manager(Path.cwd() / module_name / 'log'), filename='rxcui_ndc_df_output')
+
+    return rxcui_ndc_df
+
+def get_meps_rxcui_ndc_df(rxcui_ndc_df, module_name, settings):
     #Read in MEPS Reference table
     meps_reference = db_query(meps.utils.get_sql('meps_reference.sql'))
 
     #Join MEPS to filtered rxcui_ndc dataframe (rxcui_list)
     meps_rxcui_ndc_df = meps_reference.astype(str).merge(rxcui_ndc_df.astype(str)[['medication_ingredient_name', 'medication_ingredient_rxcui','medication_product_name', 'medication_product_rxcui', 'medication_ndc']], how = 'inner', left_on = 'RXNDC', right_on = 'medication_ndc')
     
-    output_df(meps_rxcui_ndc_df, filename='meps_rxcui_ndc_df_output')
+    output_df(meps_rxcui_ndc_df, path = path_manager(Path.cwd() / module_name / 'log'), filename = 'meps_rxcui_ndc_df_output')
 
     return meps_rxcui_ndc_df
 
@@ -185,37 +263,48 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
     chronic = config['module']['chronic']
     refills = config['module']['refills']
 
-    assign_to_attribute = normalize_name(module_name, case = 'lower') if config['module']['assign_to_attribute'] == '' else normalize_name(config['module']['assign_to_attribute'], 'lower')
+    assign_to_attribute = normalize_name(module_name, case = 'lower') if config['module']['assign_to_attribute'] in ('', None) else normalize_name(config['module']['assign_to_attribute'], 'lower')
     reason = assign_to_attribute
 
     module_dict = {}
+    all_remarks = []
+    sep = '\n'
+    module_display_name = config['module']['name'] if config['module']['name'] not in ('', None) else normalize_name(module_name, spaces = True)
+    camelcase_module_name = normalize_name(module_display_name, spaces = True)
+    uppercase_module_name = normalize_name(module_display_name, case = 'upper', spaces = True)
 
-    module_dict['name'] = normalize_name(module_name, spaces=True)
+    module_dict['name'] = camelcase_module_name
     module_dict['remarks'] = [
-        'This submodule prescribes a medication based on distributions of',
-        '<<INPUTS FROM CONFIG>>.', # i.e. age, gender, state
+        '======================================================================',
+        f'  SUBMODULE {uppercase_module_name}',
+        '======================================================================',
+        '',
+        'This submodule prescribes a medication based on population data.',
         '',
         'IT IS UP TO THE CALLING MODULE TO END THIS MEDICATION BY ATTRIBUTE.',
         'All medications prescribed in this module are assigned to the attribute',
-        '\'' + assign_to_attribute + '\'.',
-        '',
-        'Input query for this submodule:',
-        '  Include: ',
-        '    RxClass: <<RXCLASS INCLUDES>>',
-        '    RxNorm: <<RXCUI INCLUDES>>',
-        '  Exclude:',
-        '    RxClass: <<RXCLASS EXCLUDES>>',
-        '    RxNorm: <<RXCUI EXCLUDES>>',
+        f'\'{assign_to_attribute}\'.',
         '',
         'Reference links:',
-        '  RxClass: https://mor.nlm.nih.gov/RxClass/',
-        '  RxNorm: https://www.nlm.nih.gov/research/umls/rxnorm/index.html',
-        '  RxNav: https://mor.nlm.nih.gov/RxNav/',
-        '  MEPS: https://meps.ahrq.gov/mepsweb/data_stats/MEPS_topics.jsp?topicid=46Z-1',
-        '  FDA: https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory',
+        '    RxClass: https://mor.nlm.nih.gov/RxClass/',
+        '    RxNorm: https://www.nlm.nih.gov/research/umls/rxnorm/index.html',
+        '    RxNav: https://mor.nlm.nih.gov/RxNav/',
+        '    MEPS: https://meps.ahrq.gov/mepsweb/data_stats/MEPS_topics.jsp?topicid=46Z-1',
+        '    FDA: https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory',
         '',
-        'Made with (</>) by the CodeRx Medication Diversification Tool'
+        'Made with (</>) by the CodeRx Medication Diversification Tool (MDT)'
     ]
+
+    settings_remarks = [
+        '',
+        'MDT settings for this submodule:',
+    ]
+    settings_text = json.dumps(settings, indent = 4)
+    settings_text_list = settings_text.split('\n')
+    settings_remarks += settings_text_list
+    module_dict['remarks'] += settings_remarks
+    all_remarks += module_dict['remarks']
+
     # NOTE: not sure the difference between 1 and 2... I think 2 is the most recent version(?)
     module_dict['gmf_version'] = 2
 
@@ -274,6 +363,7 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
         'type': 'Simple',
         'lookup_table_transition': lookup_table_transition
     }
+    all_remarks += ingredient_transition_state_remarks
 
     # Generate product table transition
     medication_ingredient_name_list = meps_rxcui_ndc_df['medication_ingredient_name'].unique().tolist()
@@ -307,6 +397,7 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
             'type': 'Simple',
             'lookup_table_transition': lookup_table_transition
         }
+        all_remarks += product_transition_state_remarks
 
     # Generate MedicationOrder states
     # medication_products = list(meps_rxcui_ndc_df[['medication_product_name', 'medication_product_rxcui']].to_records(index=False))
@@ -355,11 +446,14 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
     module_dict['states'] = states_dict
     
     filename = normalize_name(module_name, 'lower')
+    output_list(all_remarks, path = path_manager(module / 'log'))
     output_json(module_dict, path = module, filename = filename)
 
 
 def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd()):
     module = path / module_name
+    lookup_tables = path_manager(module / 'lookup_tables')
+    delete_csv_files(lookup_tables)
 
     meps_rxcui = meps_rxcui_ndc_df
     # Optional: Age range join - can be customized in the mdt_config.json file
@@ -370,20 +464,23 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
     state_prefix = config['state_prefix']
     ingredient_distribution_suffix = config['ingredient_distribution_suffix']
     product_distribution_suffix = config['product_distribution_suffix']
-    age_ranges = config['meps']['age']
+    age_ranges = config['meps']['age_ranges']
+    default_age_ranges = config['default_age_ranges']
 
     groupby_demographic_variables = []
     for k, v in demographic_distribution_flags.items():
-        if v == 'Y':
+        if v != False:
                groupby_demographic_variables.append(k)  
-        
+    
     # Optional: age range from MEPS 
-    if demographic_distribution_flags['age'] == 'Y':
+    if demographic_distribution_flags['age'] != False:
+        if age_ranges is None or age_ranges[0] is None:
+            age_ranges = default_age_ranges
         age_ranges_df = age_values(age_ranges)
         meps_rxcui_ndc_df = meps_rxcui_ndc_df.merge(age_ranges_df.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
     
     # Optional: state-region mapping from MEPS 
-    if demographic_distribution_flags['state'] == 'Y':
+    if demographic_distribution_flags['state'] != False:
         meps_rxcui_ndc_df = meps_rxcui_ndc_df.merge(meps.columns.meps_region_states.astype(str), how='inner', left_on='region_num', right_on='region_value')
 
     # Clean text to JSON/SQL-friendly format 
@@ -471,6 +568,6 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
         # Fill NULLs and save as CSV 
         dcp_dict['percent_product_patients'].fillna(0, inplace=True)
         product_distribution_df = dcp_dict['percent_product_patients']
-        output_df(product_distribution_df, output = 'csv', path = path_manager(module / 'lookup_tables'), filename = filename)
+        output_df(product_distribution_df, output = 'csv', path = lookup_tables, filename = filename)
 
     return dcp_dict

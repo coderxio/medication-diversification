@@ -15,6 +15,12 @@ def path_manager(*args):
     return p
 
 
+def delete_csv_files(path=Path.cwd()):
+    files = path.glob('*.csv')
+    for file in files:
+        file.unlink()
+
+
 def create_mdt_con():
     """create defualt connection to the MDT.db in data folder."""
     conn = sqlite3.connect(path_manager('data') / 'MDT.db')
