@@ -264,7 +264,7 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
     refills = config['module']['refills']
 
     assign_to_attribute = normalize_name(module_name, case = 'lower') if config['module']['assign_to_attribute'] is None else normalize_name(config['module']['assign_to_attribute'], 'lower')
-    reason = config['module']['reason'] if config['module']['reason'] is not None else ''
+    reason = config['module']['reason']
 
     module_dict = {}
     all_remarks = []
@@ -427,13 +427,15 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
             'name': state_name,
             'type': 'MedicationOrder',
             'assign_to_attribute': assign_to_attribute,
-            'reason': reason,
             'codes': [ codes ],
             'prescription': prescription,
             'direct_transition': 'Terminal'
         }
         if chronic in (True, False):
             states_dict[state_name]['chronic'] = chronic
+
+        if reason is not None:
+            states_dict[state_name]['reason'] = reason
 
         if idx == 0:
             medication_order_state_remarks_dict = {'remarks': medication_order_state_remarks}
