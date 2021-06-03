@@ -17,11 +17,11 @@ def read_json(file_name):
 
 
 # Monkey patched this function to get run_mdt working by removing the filename arg and importing from config
-def age_values():
-    """reads age_ranges from JSON to create dataframe with age_values"""
+def age_values(age_ranges):
+    """Creates dataframe with age_values"""
 
     data = {}
-    data['age'] = MEPS_CONFIG['age']
+    data['age'] = age_ranges
     data['age_values'] = [list(range(int(age.split('-')[0]), int(age.split('-')[1])+1)) for age in data['age']]
     df = pd.DataFrame(data)
     df = df.explode('age_values')
@@ -30,7 +30,7 @@ def age_values():
 
 # TODO: Add option to string search doseage form
 def rxcui_ndc_matcher(rxcui_list):
-    """mashes list of RxCUIs against RxNorm combined table to get matching NDCs. 
+    """Mashes list of RxCUIs against RxNorm combined table to get matching NDCs. 
     Select output of return, clipboard, csv....return is default"""
 
     df = db_query('SELECT * FROM rxcui_ndc')
@@ -124,22 +124,22 @@ def filter_by_ingredient_tty(rxcui_ndc_df, ingredient_tty_filter):
 
     return filtered_rxcui_ndc_df
 
-def output_df(df, output='csv', filename='df_output'):
+def output_df(df, output='csv', path=Path.cwd(), filename='df_output'):
     """Outputs a dataframe to a csv of clipboard if you use the output=clipboard arguement"""
     filename = filename + '.' + output
     if output == 'clipboard':
         df.to_clipboard(index=False, excel=True)
     elif output == 'csv':
-        df.to_csv(path_manager('output') / filename, index=False)
+        df.to_csv(path / filename, index=False)
 
 
-def output_json(data, filename='json_output'):
+def output_json(data, path=Path.cwd(), filename='json_output'):
     filename = filename + '.json'
-    with open(path_manager('output') / filename, 'w', encoding='utf-8') as f:
+    with open(path / filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 
-def normalize_name(name, case='camel'):
+def normalize_name(name, case='camel', spaces=False):
     """ Case is optional and choices are lower, upper, and camel """
 
     #Replace all non-alphanumeric characters with an underscore
@@ -156,6 +156,9 @@ def normalize_name(name, case='camel'):
     elif case == 'camel':
         name = name.title()
 
+    if spaces:
+        name = re.sub(r"_", " ", name)
+
     return name
 
 
@@ -170,23 +173,24 @@ def get_meps_rxcui_ndc_df(rxcui_ndc_df):
 
     return meps_rxcui_ndc_df
 
-def generate_module_json(meps_rxcui_ndc_df):
-    config = MEPS_CONFIG
-    module_name = config['module_name']
-    demographic_distribution_flags = config['demographic_distribution_flags']
+def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd()):
+    module = path / module_name
+
+    config = settings
+    demographic_distribution_flags = config['meps']['demographic_distribution_flags']
     state_prefix = config['state_prefix']
     ingredient_distribution_suffix = config['ingredient_distribution_suffix']
     product_distribution_suffix = config['product_distribution_suffix']
-    as_needed = config['as_needed']
-    chronic = config['chronic']
-    refills = config['refills']
+    as_needed = config['module']['as_needed']
+    chronic = config['module']['chronic']
+    refills = config['module']['refills']
 
-    assign_to_attribute = normalize_name(module_name + '_prescription', case = 'lower') if config['assign_to_attribute'] == '' else normalize_name(config['assign_to_attribute'], 'lower')
+    assign_to_attribute = normalize_name(module_name, case = 'lower') if config['module']['assign_to_attribute'] == '' else normalize_name(config['module']['assign_to_attribute'], 'lower')
     reason = assign_to_attribute
 
     module_dict = {}
 
-    module_dict['name'] = module_name + ' Medications'
+    module_dict['name'] = normalize_name(module_name, spaces=True)
     module_dict['remarks'] = [
         'This submodule prescribes a medication based on distributions of',
         '<<INPUTS FROM CONFIG>>.', # i.e. age, gender, state
@@ -350,21 +354,23 @@ def generate_module_json(meps_rxcui_ndc_df):
 
     module_dict['states'] = states_dict
     
-    filename = normalize_name(module_name + '_medication', 'lower')
-    output_json(module_dict, filename=filename)
+    filename = normalize_name(module_name, 'lower')
+    output_json(module_dict, path = module, filename = filename)
 
 
-def generate_module_csv(meps_rxcui_ndc_df):
+def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd()):
+    module = path / module_name
+
     meps_rxcui = meps_rxcui_ndc_df
     # Optional: Age range join - can be customized in the mdt_config.json file
     # groupby_demographic_variable: must be either an empty list [] or list of patient demographics (e.g., age, gender, state) - based on user inputs in the mdt_config.json file
 
-    config = MEPS_CONFIG
-    module_name = config['module_name']
-    demographic_distribution_flags = config['demographic_distribution_flags']
+    config = settings
+    demographic_distribution_flags = config['meps']['demographic_distribution_flags']
     state_prefix = config['state_prefix']
     ingredient_distribution_suffix = config['ingredient_distribution_suffix']
     product_distribution_suffix = config['product_distribution_suffix']
+    age_ranges = config['meps']['age']
 
     groupby_demographic_variables = []
     for k, v in demographic_distribution_flags.items():
@@ -373,8 +379,8 @@ def generate_module_csv(meps_rxcui_ndc_df):
         
     # Optional: age range from MEPS 
     if demographic_distribution_flags['age'] == 'Y':
-        age_ranges = age_values()
-        meps_rxcui_ndc_df = meps_rxcui_ndc_df.merge(age_ranges.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
+        age_ranges_df = age_values(age_ranges)
+        meps_rxcui_ndc_df = meps_rxcui_ndc_df.merge(age_ranges_df.astype(str), how='inner', left_on='AGELAST', right_on='age_values')
     
     # Optional: state-region mapping from MEPS 
     if demographic_distribution_flags['state'] == 'Y':
@@ -428,7 +434,7 @@ def generate_module_csv(meps_rxcui_ndc_df):
     # Fill NULLs and save as CSV
     dcp_dict['percent_ingredient_patients'].fillna(0, inplace=True)
     ingredient_distribution_df = dcp_dict['percent_ingredient_patients']
-    output_df(ingredient_distribution_df, output='csv', filename=filename)
+    output_df(ingredient_distribution_df, output = 'csv', path = path_manager(module / 'lookup_tables'), filename = filename)
 
     # Product Name Distribution (Transition 2)
     """Numerator = product_name 
@@ -465,6 +471,6 @@ def generate_module_csv(meps_rxcui_ndc_df):
         # Fill NULLs and save as CSV 
         dcp_dict['percent_product_patients'].fillna(0, inplace=True)
         product_distribution_df = dcp_dict['percent_product_patients']
-        output_df(product_distribution_df, output='csv', filename=filename)
+        output_df(product_distribution_df, output = 'csv', path = path_manager(module / 'lookup_tables'), filename = filename)
 
     return dcp_dict

@@ -13,6 +13,7 @@ product_distribution_suffix: _product_distribution
 
 MODULE_SETTINGS = '''\
 module:
+    assign_to_attribute: ""
     as_needed: false
     chronic: false
     refills: 0
@@ -29,7 +30,7 @@ rxcui:
     exclude:
         # - somecui
 ingredient_tty_filter: IN
-dosage_filter:
+dose_form_filter:
     # - Dry Powder Inhaler
 meps:
     age: ["0-3", "4-7"]
@@ -45,6 +46,7 @@ config_schema = {
     'ingredient_distribution_suffix': ((str,), ''),
     'product_distribution_suffix': ((str,), ''),
     'module': {
+        'assign_to_attribute': ((str,), ''),
         'as_needed': ((bool,), ''),
         'chronic': ((bool,), ''),
         'refills': ((int,), ''),
@@ -54,7 +56,7 @@ config_schema = {
         'exclude': ((list, type(None)), ''),
     },
     'ingredient_tty_filter': ((str,), 'must be either IN, MIN'),
-    'dosage_filter': ((list, type(None)), ''),
+    'dose_form_filter': ((list, type(None)), ''),
     'meps': {
         'age': ((list,), "['0-3']"),
         'demographic_distribution_flags': ((object,), ''),
@@ -104,3 +106,20 @@ def create_module_settings(module_name, path=Path.cwd()):
         module.mkdir(parents=True)
         data = yaml.load(MODULE_SETTINGS)
         yaml.dump(data, (module / 'settings.yaml'))
+
+def get_settings(module_name, path=Path.cwd()):
+    mdt_settings = path / 'mdt-settings.yaml'
+    module_settings = path / module_name / 'settings.yaml'
+
+    if not mdt_settings.exists():
+        raise FileNotFoundError('MDT settings file does not exist.')
+    elif not module_settings.exists():
+        raise FileNotFoundError(f'Settings file does not exist in the {module_name} module.')
+
+    mdt_data = yaml.load(mdt_settings)
+    module_data = yaml.load(module_settings)
+    settings = {**mdt_data, **module_data}
+
+    validate_config(settings)
+
+    return settings
