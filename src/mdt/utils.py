@@ -98,7 +98,7 @@ def filter_by_dose_form(rxcui_ndc_df, settings, method='include'):
     If dfg_df list is empty, return the rxcui_ndc_df without filtering
     Select method option of include or exclude....include is default"""
     dose_form_filter_list = settings['dose_form_filter']
-    if dose_form_filter_list[0] is None or len(dose_form_filter_list) == 0:
+    if not isinstance(dose_form_filter_list, list):
         return rxcui_ndc_df
 
     dfg_df_df = db_query('SELECT * FROM dfg_df')
@@ -182,16 +182,16 @@ def get_rxcui_ingredient_df(settings):
     rxcui_include_list = []
     rxcui_exclude_list = []
 
-    if settings['rxclass']['include'] and settings['rxclass']['include'][0]['class_id']:
+    if isinstance(settings['rxclass']['include'], list):
         rxcui_include_list = rxnorm.rxclass.rxclass_get_rxcuis(settings['rxclass']['include'])
     
-    if settings['rxcui']['include']:
+    if isinstance(settings['rxcui']['include'], list):
         rxcui_include_list += settings['rxcui']['include']
 
-    if settings['rxclass']['exclude'] and settings['rxclass']['exclude'][0]['class_id']:
+    if isinstance(settings['rxclass']['exclude'], list):
         rxcui_exclude_list = rxnorm.rxclass.rxclass_get_rxcuis(settings['rxclass']['exclude'])
     
-    if settings['rxcui']['exclude']:
+    if isinstance(settings['rxcui']['exclude'], list):
         rxcui_exclude_list += settings['rxcui']['exclude']
 
     rxcui_ingredient_list = [i for i in rxcui_include_list if i not in rxcui_exclude_list]
@@ -263,13 +263,13 @@ def generate_module_json(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd
     chronic = config['module']['chronic']
     refills = config['module']['refills']
 
-    assign_to_attribute = normalize_name(module_name, case = 'lower') if config['module']['assign_to_attribute'] in ('', None) else normalize_name(config['module']['assign_to_attribute'], 'lower')
+    assign_to_attribute = normalize_name(module_name, case = 'lower') if config['module']['assign_to_attribute'] is None else normalize_name(config['module']['assign_to_attribute'], 'lower')
     reason = assign_to_attribute
 
     module_dict = {}
     all_remarks = []
     sep = '\n'
-    module_display_name = config['module']['name'] if config['module']['name'] not in ('', None) else normalize_name(module_name, spaces = True)
+    module_display_name = config['module']['name'] if config['module']['name'] is not None else normalize_name(module_name, spaces = True)
     camelcase_module_name = normalize_name(module_display_name, spaces = True)
     uppercase_module_name = normalize_name(module_display_name, case = 'upper', spaces = True)
 
@@ -474,7 +474,7 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
     
     # Optional: age range from MEPS 
     if demographic_distribution_flags['age'] != False:
-        if age_ranges is None or age_ranges[0] is None:
+        if not isinstance(age_ranges, list):
             age_ranges = default_age_ranges
         age_ranges_df = age_values(age_ranges)
         meps_rxcui_ndc_df = meps_rxcui_ndc_df.merge(age_ranges_df.astype(str), how='inner', left_on='AGELAST', right_on='age_values')

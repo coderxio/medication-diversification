@@ -24,11 +24,11 @@ default_age_ranges:
 MODULE_SETTINGS = '''\
 # Settings for the Synthea module
 module:
-    name:                   # optional, defaults to the camelcase name of the module folder
-    assign_to_attribute:    # optional, defaults to the lowercase name of the module folder
-    as_needed:              # optional, defaults to false
-    chronic:                # optional, defaults to false
-    refills:                # optional, defaults to 0
+    name:                   # (optional) string, defaults to the camelcase name of the module folder
+    assign_to_attribute:    # (optional) string, defaults to the lowercase name of the module folder
+    as_needed: false        # boolean, whether the prescription is as needed
+    chronic: false          # boolean, whether the prescription is chronic
+    refills: 0              # integer, number of refills
 
 # Settings for the RxClass search to include/exclude
 # *** At least one RxClass include or RXCUI include is required ***
@@ -36,11 +36,11 @@ module:
 # RxClass options - see https://mor.nlm.nih.gov/RxClass/
 rxclass:
     include:
-        - class_id: 
-          relationship: 
+        # - class_id: 
+        #   relationship: 
     exclude:
-        - class_id:
-          relationship:
+        # - class_id:
+        #   relationship:
 
 # Settings for individual RXCUIs to include/exclude
 # *** At least one RxClass include or RXCUI include is required ***
@@ -50,22 +50,21 @@ rxclass:
 # Dose form options - see https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html
 rxcui:
     include:
-        - 
+        # - 
     exclude:
-        - 
-ingredient_tty_filter:      # optional, options are IN or MIN
-dose_form_filter:           # optional, see dose form options above
-    - 
+        # - 
+ingredient_tty_filter:      # (optional) string, options are IN or MIN
+dose_form_filter:           # (optional) list, see dose form options above
+    # - 
 
 # Settings for the MEPS population
 meps:
-    age_ranges:             # optional, defaults to system defaults
-        -
+    age_ranges:             # (optional) defaults to MDT defaults
+        # -
     demographic_distribution_flags:
-        age:                # optional, defaults to true
-        gender:             # optional, defaults to true
-        state:              # optional, defaults to true
-    year:                   # optional, defaults to 18 (2018)
+        age: true           # boolean, whether to break up distributions by age ranges
+        gender: true        # boolean, whether to break up distributions by gender
+        state: true         # boolean, whether to break up distributions by state of residence
 '''
 
 config_schema = {
@@ -76,9 +75,9 @@ config_schema = {
     'module': {
         'name': ((str, type(None)), ''),
         'assign_to_attribute': ((str, type(None)), ''),
-        'as_needed': ((bool, type(None)), ''),
-        'chronic': ((bool, type(None)), ''),
-        'refills': ((int, type(None)), ''),
+        'as_needed': ((bool,), ''),
+        'chronic': ((bool,), ''),
+        'refills': ((int,), ''),
     },
     'rxclass': {
         'include': ((list, type(None)), ''),
@@ -91,9 +90,8 @@ config_schema = {
     'ingredient_tty_filter': ((str, type(None)), 'must be either IN, MIN'),
     'dose_form_filter': ((list, type(None)), ''),
     'meps': {
-        'age_ranges': ((list, type(None)), "['0-3']"),
+        'age_ranges': ((list, type(None)), ''),
         'demographic_distribution_flags': ((object,), ''),
-        'year': ((int, type(None)), '')
     }
 }
 
@@ -118,16 +116,23 @@ def validate_config(config, schema=config_schema):
                         f'{attribute} must be of type {value_type} {err_message}'
                     )
         
-    if ((config['rxclass']['include'] is None
-            or config['rxclass']['include'][0]['class_id'] is None) 
-        and (config['rxcui']['include'] is None 
-            or config['rxcui']['include'][0] is None)):
+    sep = '\n'
+
+    if err:
+        raise ValueError(f'Config file validation error\n{sep.join(err)}')
+
+
+def validate_minimum_settings(config):
+    err = []
+
+    if (config['rxclass']['include'] is None
+        and config['rxcui']['include'] is None):
         err.append('Must have at least one RxClass include or RXCUI include.')
 
     sep = '\n'
 
     if err:
-        raise ValueError(f'Config file validation error\n{sep.join(err)}')
+        raise ValueError(f'Minimum settings validation error\n{sep.join(err)}')
 
 
 def create_mdt_settings(path=Path.cwd()):
@@ -160,5 +165,6 @@ def get_settings(module_name, path=Path.cwd()):
     settings = {**module_data, **mdt_data}
 
     validate_config(settings)
+    validate_minimum_settings(settings)
 
     return settings
