@@ -5,13 +5,56 @@ The Medication Diversification Tool (MDT) leverages publicly-available, governme
 The MDT automates the process for finding relevant medication codes and calculating a distribution of medications, using medication classification dictionaries from RxClass and population-level prescription data from the Medical Expenditure Panel Survey (MEPS). The medication distributions can be tailored to specific patient demographics (e.g., age, gender, state of residence) and combined with Synthea data to generate medication records for a sample patient population.
 
 
+## Contribution guide
+1. Setup a venv with `python -m venv venv` (or on windows `py -m venv venv`), this will create a a directory called venv in your current working directory
+2. Activate your venv with `source venv/bin/activate` (or on windows `venv/scripts/activate`)
+- If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
+3. Install MDT with `pip install -e .` (note the `.` after `-e`), this sets up mdt as an installed editable package
+4. Change to a new directory outside of the `medication-diversification/` project folder to test out MDT.
+- `cd ..`
+- `mkdir mdt-test`
+- `cd mdt-test`
+5. Initialize MDT with `mdt init`. This will create a `data/` directory and load the `MDT.db` database.
+6. Create a new module folder with `mdt module -n <<module_name>> create`. This will create a `<<module_name>>/` directory which is empty except for an initial `settings.yaml` file.
+7. Edit the `settings.yaml` folder, following the directions in this README.
+8. Build the module with `mdt module -n <<module_name>> build`. This will create:
+- A `<<module_name>>.json` file which is the Synthea module itself
+- A `lookup_tables/` folder with all transition table CSVs
+- A `log/` with helpful output logs and debugging CSVs
+
+
 ## User-defined settings
+
+### Module settings
 | Setting | Type | Description |
 | ------- | ---- | ----------- |
-| `module_name` | `string` | The name of your module.  Also becomes part of the `assign_to_attribute` property by default. |
+| `name` | `string` | The name of your module.  Defaults to the `camel_case` name of the module folder. Also used as `assign_to_attribute` property by default. |
 | `assign_to_attribute` | `string` | **(optional)** The name of the `"attribute"` to assign this state to. Defaults to `<<module_name>>_prescription`. |
+| `reason` | `string` | **(optional)** Either an `"attribute"` or a `"State_Name"` referencing a *previous* `ConditionOnset` state. |
 | `chronic` | `boolean` | **(optional)** If `true`, a medication is considered a chronic medication for a chronic condition. This will cause Synthea to reissue the same medication as a new prescription AND discontinue the old prescription at each wellness encounter. |
 | `as_needed` | `boolean` | **(optional)** If `true`, the medication may be taken as needed instead of on a specific schedule. |
+| `refills` | `integer` | **(optional)** The number of refills to allow.  If not specified, defaults to `0`. |
+
+### RxClass settings
+| Setting | Type | Description |
+| ------- | ---- | ----------- |
+| `include` | `list of objects` | `class_id` / `relationship` pairs of RxClass classes to include. |
+| `exclude` | `list of objects` | `class_id` / `relationship` pairs of RxClass classes to exclude. |
+
+### RXCUI settings
+| Setting | Type | Description |
+| ------- | ---- | ----------- |
+| `include` | `list of strings` | RXCUIs to include. |
+| `exclude` | `list of strings` | RXCUIs to exclude. |
+| `ingredient_tty_filter` | `string` | **(optional)** `"IN"` to only return single ingredient products or `"MIN"` to only return multiple ingredient products. |
+| `dose_form_filter` | `list of strings` | **(optional)** A list of dose forms or dose form group names to filter products by. See this [RxNorm reference](https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html) for valid options. |
+
+### MEPS settings
+| Setting | Type | Description |
+| ------- | ---- | ----------- |
+| `age_ranges` | `list of strings` | Age ranges to break up distributions by. |
+| `demographic_distribution_flags` | `object` | Whether to break up distributions by `age`, `gender`, and `state`.  All three default to `true`. |
+
 
 ## How to replace a MedicationOrder with a MDT submodule
 To replace a MedicationOrder with one of our MDT submodules, replace the [MedicationOrder state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework:-States#medicationorder) with a [CallSubmodule state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#callsubmodule).
@@ -93,11 +136,3 @@ src/
 │  │  │  ├─ hypothyroidism.json
 │  │  │  ├─ ...
 ```
-
-## Contribution guide
-1. Setup a venv with `python -m venv venv`, this will create a a directory called venv in your current working directory
-2. Activate your venv with `source venv/bin/activate` or on windows `venv/scripts/activate`
-3. Install MDT with `pip install -e .`, this sets up mdt as an installed editable package
-4. Run MDT with `python -m mdt.run_mdt D007037 may_treat`
-    - `run_mdt` takes two system args the rxclass_id and rxclass_rela these must be specified
-    - the initial run of `run_mdt` will download all necessary files and build the database in `data/` in the current working directory
