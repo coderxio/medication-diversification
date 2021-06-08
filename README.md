@@ -22,7 +22,7 @@ py -m venv venv
 venv/scripts/activate
 ```
 > If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
-3. Install MDT as an editable package (note the `.` after `-e`).
+3. Install MDT as an installed editable package (note the `.` after `-e`).
 ```
 pip install -e .
 ```
@@ -32,7 +32,7 @@ cd ..
 mkdir mdt-test
 cd mdt-test
 ```
-5. Initialize MDT to create a `data/` directory and load the `MDT.db` database. This only needs to be done once.
+5. Initialize MDT. This only needs to be done once. This will create a `data/` directory and load the `MDT.db` database.
 ```
 mdt init
 ```
@@ -49,7 +49,8 @@ This will create:
 - A `<<module_name>>.json` file which is the Synthea module itself
 - A `lookup_tables/` directory with all transition table CSVs
 - A `log/` directory with helpful output logs and debugging CSVs
-> Repeat steps 7 and 8 until the Synthea module is producing medications that align with what you would expect. Use the `log <<timestamp>>.txt` files in the `log/` directory as a quick and easy way to validate the output of the module with a clinical subject matter expert.
+> Repeat steps 7 and 8 until MDT is producing medications that align with what you would expect. Use the `log <<timestamp>>.txt` files in the `log/` directory as a quick and easy way to validate the output of the module with a clinical subject matter expert.
+
 > To create a new module, start at step 6.
 
 ## User-defined settings
@@ -120,8 +121,8 @@ rxclass:
 | ------- | ---- | ----------- |
 | `include` | `list of strings` | RXCUIs to include. See ingredients section of [RxNav](https://mor.nlm.nih.gov/RxNav/) for valid options. |
 | `exclude` | `list of strings` | RXCUIs to exclude. See ingredients section of [RxNav](https://mor.nlm.nih.gov/RxNav/) for valid options. |
-| `ingredient_tty_filter` | `string` | **(optional)** `"IN"` to only return single ingredient products or `"MIN"` to only return multiple ingredient products. |
-| `dose_form_filter` | `list of strings` | **(optional)** A list of dose forms or dose form group names to filter products by. See this [RxNorm reference](https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html) for valid options. |
+| `ingredient_tty_filter` | `string` | **(optional)** `IN` to only return single ingredient products or `MIN` to only return multiple ingredient products. |
+| `dose_form_filter` | `list of strings` | **(optional)** A list of dose forms or dose form group names to filter products by. See this [RxNorm dose form reference](https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html) for valid options. |
 
 **Examples:**
 
@@ -145,6 +146,16 @@ rxcui:
 rxcui:
   include:
     - '284635'
+```
+
+*Single ingredient inhalant product fluticasone medications only*
+```
+rxcui:
+  include:
+    - '41126'
+ingredient_tty_filter: IN
+dose_form_filter:
+  - Inhalant Product
 ```
 
 ### MEPS settings
