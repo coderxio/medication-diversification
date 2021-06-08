@@ -64,7 +64,7 @@ def rxclass_getclassmember_payload(class_id, relation, ttys=['IN', 'MIN']):
 
 def rxclass_get_rxcuis(rxclass_query_list):
     """Returns a distinct list of RXCUIs from multiple RxClass queries"""
-
+    print(rxclass_query_list)
     rxcui_list = []
     for rxclass_query in rxclass_query_list:
         class_id = rxclass_query['class_id']
