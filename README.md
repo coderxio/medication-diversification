@@ -5,23 +5,53 @@ The Medication Diversification Tool (MDT) leverages publicly-available, governme
 The MDT automates the process for finding relevant medication codes and calculating a distribution of medications, using medication classification dictionaries from RxClass and population-level prescription data from the Medical Expenditure Panel Survey (MEPS). The medication distributions can be tailored to specific patient demographics (e.g., age, gender, state of residence) and combined with Synthea data to generate medication records for a sample patient population.
 
 
-## Contribution guide
-1. Setup a venv with `python -m venv venv` (or on windows `py -m venv venv`), this will create a a directory called venv in your current working directory
-2. Activate your venv with `source venv/bin/activate` (or on windows `venv/scripts/activate`)
-- If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
-3. Install MDT with `pip install -e .` (note the `.` after `-e`), this sets up MDT as an installed editable package
+## Developer quickstart
+1. Clone the repo.
+```
+git clone https://github.com/coderxio/medication-diversification.git
+cd medication-diversification
+```
+2. Create and activate a venv.
+```
+python -m venv venv
+source venv/bin/activate
+```
+Or on Windows:
+```
+py -m venv venv
+venv/scripts/activate
+```
+> If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
+3. Install MDT as an installed editable package (note the `.` after `-e`).
+```
+pip install -e .
+```
 4. Change to a new directory outside of the `medication-diversification/` project folder to test out MDT.
-- `cd ..`
-- `mkdir mdt-test`
-- `cd mdt-test`
-5. Initialize MDT with `mdt init`. This will create a `data/` directory and load the `MDT.db` database.
-6. Create a new module folder with `mdt module -n <<module_name>> create`. This will create a `<<module_name>>/` directory which is empty except for an initial `settings.yaml` file.
-7. Edit the `settings.yaml` folder, following the directions in this README.
-8. Build the module with `mdt module -n <<module_name>> build`. This will create:
+```
+cd ..
+mkdir mdt-test
+cd mdt-test
+```
+5. Initialize MDT. This only needs to be done once. This will create a `data/` directory and load the `MDT.db` database.
+```
+mdt init
+```
+6. Create a new module. This will create a `<<module_name>>/` directory which is empty except for an initial `settings.yaml` file.
+```
+mdt module -n <<module_name>> create
+```
+7. Edit the `settings.yaml` folder in the newly created `<<module_name>>/` directory, following the directions in this README.
+8. Build the module.
+```
+mdt module -n <<module_name>> build
+```
+This will create:
 - A `<<module_name>>.json` file which is the Synthea module itself
 - A `lookup_tables/` directory with all transition table CSVs
 - A `log/` directory with helpful output logs and debugging CSVs
+> Repeat steps 7 and 8 until MDT is producing medications that align with what you would expect. Use the `log <<timestamp>>.txt` files in the `log/` directory as a quick and easy way to validate the output of the module with a clinical subject matter expert.
 
+> To create a new module, start at step 6.
 
 ## User-defined settings
 
@@ -44,6 +74,45 @@ The MDT automates the process for finding relevant medication codes and calculat
 | `include` | `list of objects` | `class_id` / `relationship` pairs of RxClass classes to include. See [RxClass](https://mor.nlm.nih.gov/RxClass/) for valid options. |
 | `exclude` | `list of objects` | `class_id` / `relationship` pairs of RxClass classes to exclude. See [RxClass](https://mor.nlm.nih.gov/RxClass/) for valid options. |
 
+**Examples:**
+
+*Corticosteroid medications*
+```
+rxclass:
+  include:
+    - class_id: R01AD
+      relationship: ATC
+```
+
+*Medications that may treat hypothyroidism*
+```
+rxclass:
+  include:
+    - class_id: D007037
+      relationship: may_treat
+```
+
+*HMG CoA reductase inhibitor medications AND medications that may prevent stroke*
+```
+rxclass:
+  include:
+    - class_id: R01AD
+      relationship: ATC
+    - class_id: D020521
+      relationship: may_prevent
+```
+
+*Medications that may prevent stroke EXCLUDING P2Y12 platelet inhibitors*
+```
+rxclass:
+  include:
+    - class_id: D020521
+      relationship: may_prevent
+    exclude:
+    - class_id: N0000182142
+      relationship: has_EPC
+```
+
 ### RXCUI settings
 
 **NOTE:** At least one RxClass `include` or RXCUI `include` is required to run MDT.
@@ -52,8 +121,42 @@ The MDT automates the process for finding relevant medication codes and calculat
 | ------- | ---- | ----------- |
 | `include` | `list of strings` | RXCUIs to include. See ingredients section of [RxNav](https://mor.nlm.nih.gov/RxNav/) for valid options. |
 | `exclude` | `list of strings` | RXCUIs to exclude. See ingredients section of [RxNav](https://mor.nlm.nih.gov/RxNav/) for valid options. |
-| `ingredient_tty_filter` | `string` | **(optional)** `"IN"` to only return single ingredient products or `"MIN"` to only return multiple ingredient products. |
-| `dose_form_filter` | `list of strings` | **(optional)** A list of dose forms or dose form group names to filter products by. See this [RxNorm reference](https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html) for valid options. |
+| `ingredient_tty_filter` | `string` | **(optional)** `IN` to only return single ingredient products or `MIN` to only return multiple ingredient products. |
+| `dose_form_filter` | `list of strings` | **(optional)** A list of dose forms or dose form group names to filter products by. See this [RxNorm dose form reference](https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html) for valid options. |
+
+**Examples:**
+
+*Prednisone medications*
+```
+rxcui:
+  include:
+    - '8640'
+```
+
+*Albuterol AND levalbuterol medications*
+```
+rxcui:
+  include:
+    - '435'
+    - '237159'
+```
+
+*Fluticasone / salmeterol (TTY = MIN, multiple ingredient) medications*
+```
+rxcui:
+  include:
+    - '284635'
+```
+
+*Single ingredient inhalant product fluticasone medications only*
+```
+rxcui:
+  include:
+    - '41126'
+ingredient_tty_filter: IN
+dose_form_filter:
+  - Inhalant Product
+```
 
 ### MEPS settings
 | Setting | Type | Description |
@@ -61,6 +164,24 @@ The MDT automates the process for finding relevant medication codes and calculat
 | `age_ranges` | `list of strings` | Age ranges to break up distributions by. Defaults to MDT system defaults. |
 | `demographic_distribution_flags` | `object` | Whether to break up distributions by `age`, `gender`, and `state`.  All three default to `true`. |
 
+**Examples:**
+
+*Custom age ranges for pediatric patients only*
+```
+meps:
+  age_ranges:
+    - 0-5
+    - 6-12
+    - 13-17
+```
+
+*Split population under and over 65 years old*
+```
+meps:
+  age_ranges:
+    - 0-64
+    - 65-103
+```
 
 ## How to replace a MedicationOrder with a MDT submodule
 To replace a MedicationOrder with one of our MDT submodules, replace the [MedicationOrder state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework:-States#medicationorder) with a [CallSubmodule state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#callsubmodule).
