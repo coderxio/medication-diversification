@@ -49,7 +49,8 @@ This will create:
 - A `<<module_name>>.json` file which is the Synthea module itself
 - A `lookup_tables/` directory with all transition table CSVs
 - A `log/` directory with helpful output logs and debugging CSVs
-
+> Repeat steps 7 and 8 until the Synthea module is producing medications that align with what you would expect. Use the `log <<timestamp>>.txt` files in the `log/` directory as a quick and easy way to validate the output of the module with a clinical subject matter expert.
+> To create a new module, start at step 6.
 
 ## User-defined settings
 
@@ -72,6 +73,44 @@ This will create:
 | `include` | `list of objects` | `class_id` / `relationship` pairs of RxClass classes to include. See [RxClass](https://mor.nlm.nih.gov/RxClass/) for valid options. |
 | `exclude` | `list of objects` | `class_id` / `relationship` pairs of RxClass classes to exclude. See [RxClass](https://mor.nlm.nih.gov/RxClass/) for valid options. |
 
+Examples:
+*Corticosteroid medications*
+```
+rxclass:
+  include:
+        - class_id: R01AD
+          relationship: ATC
+```
+
+*Medications that may treat hypothyroidism*
+```
+rxclass:
+  include:
+        - class_id: D007037
+          relationship: may_treat
+```
+
+*HMG CoA reductase inhibitor medications AND medications that may prevent stroke*
+```
+rxclass:
+  include:
+        - class_id: R01AD
+          relationship: ATC
+        - class_id: D020521
+          relationship: may_prevent
+```
+
+*Medications that may prevent stroke EXCLUDING P2Y12 platelet inhibitors*
+```
+rxclass:
+  include:
+        - class_id: D020521
+          relationship: may_prevent
+    exclude:
+        - class_id: N0000182142
+          relationship: has_EPC
+```
+
 ### RXCUI settings
 
 **NOTE:** At least one RxClass `include` or RXCUI `include` is required to run MDT.
@@ -83,12 +122,52 @@ This will create:
 | `ingredient_tty_filter` | `string` | **(optional)** `"IN"` to only return single ingredient products or `"MIN"` to only return multiple ingredient products. |
 | `dose_form_filter` | `list of strings` | **(optional)** A list of dose forms or dose form group names to filter products by. See this [RxNorm reference](https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html) for valid options. |
 
+Examples:
+*Prednisone medications*
+```
+rxcui:
+    include:
+        - '8640'
+```
+
+*Albuterol AND levalbuterol medications*
+```
+rxcui:
+    include:
+        - '435'
+        - '237159'
+```
+
+*Fluticasone / salmeterol (TTY = MIN, multiple ingredient) medications*
+```
+rxcui:
+    include:
+        - '284635'
+```
+
 ### MEPS settings
 | Setting | Type | Description |
 | ------- | ---- | ----------- |
 | `age_ranges` | `list of strings` | Age ranges to break up distributions by. Defaults to MDT system defaults. |
 | `demographic_distribution_flags` | `object` | Whether to break up distributions by `age`, `gender`, and `state`.  All three default to `true`. |
 
+Examples:
+*Custom age ranges for pediatric patients only*
+```
+meps:
+    age_ranges:
+        - 0-5
+        - 6-12
+        - 13-17
+```
+
+*Split population under and over 65 years old*
+```
+meps:
+    age_ranges:
+        - 0-64
+        - 65-103
+```
 
 ## How to replace a MedicationOrder with a MDT submodule
 To replace a MedicationOrder with one of our MDT submodules, replace the [MedicationOrder state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework:-States#medicationorder) with a [CallSubmodule state](https://github.com/synthetichealth/synthea/wiki/Generic-Module-Framework%3A-States#callsubmodule).
