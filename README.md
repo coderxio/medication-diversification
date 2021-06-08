@@ -5,19 +5,47 @@ The Medication Diversification Tool (MDT) leverages publicly-available, governme
 The MDT automates the process for finding relevant medication codes and calculating a distribution of medications, using medication classification dictionaries from RxClass and population-level prescription data from the Medical Expenditure Panel Survey (MEPS). The medication distributions can be tailored to specific patient demographics (e.g., age, gender, state of residence) and combined with Synthea data to generate medication records for a sample patient population.
 
 
-## Contribution guide
-1. Setup a venv with `python -m venv venv` (or on windows `py -m venv venv`), this will create a a directory called venv in your current working directory
-2. Activate your venv with `source venv/bin/activate` (or on windows `venv/scripts/activate`)
-- If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
-3. Install MDT with `pip install -e .` (note the `.` after `-e`), this sets up MDT as an installed editable package
+## Developer quickstart
+1. Clone the repo.
+```
+git clone https://github.com/coderxio/medication-diversification.git
+cd medication-diversification
+```
+2. Create and activate a venv.
+```
+python -m venv venv
+source venv/bin/activate
+```
+Or on Windows:
+```
+py -m venv venv
+venv/scripts/activate
+```
+> If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
+3. Install MDT as an editable package (note the `.` after `-e`).
+```
+pip install -e .
+```
 4. Change to a new directory outside of the `medication-diversification/` project folder to test out MDT.
-- `cd ..`
-- `mkdir mdt-test`
-- `cd mdt-test`
-5. Initialize MDT with `mdt init`. This will create a `data/` directory and load the `MDT.db` database.
-6. Create a new module folder with `mdt module -n <<module_name>> create`. This will create a `<<module_name>>/` directory which is empty except for an initial `settings.yaml` file.
-7. Edit the `settings.yaml` folder, following the directions in this README.
-8. Build the module with `mdt module -n <<module_name>> build`. This will create:
+```
+cd ..
+mkdir mdt-test
+cd mdt-test
+```
+5. Initialize MDT to create a `data/` directory and load the `MDT.db` database. This only needs to be done once.
+```
+mdt init
+```
+6. Create a new module. This will create a `<<module_name>>/` directory which is empty except for an initial `settings.yaml` file.
+```
+mdt module -n <<module_name>> create
+```
+7. Edit the `settings.yaml` folder in the newly created `<<module_name>>/` directory, following the directions in this README.
+8. Build the module.
+```
+mdt module -n <<module_name>> build
+```
+This will create:
 - A `<<module_name>>.json` file which is the Synthea module itself
 - A `lookup_tables/` directory with all transition table CSVs
 - A `log/` directory with helpful output logs and debugging CSVs
