@@ -19,7 +19,7 @@ source venv/bin/activate
 Or on Windows:
 ```
 py -m venv venv
-venv/scripts/activate
+venv\scripts\activate
 ```
 > If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
 3. Install MDT as an installed editable package (note the `.` after `-e`).
