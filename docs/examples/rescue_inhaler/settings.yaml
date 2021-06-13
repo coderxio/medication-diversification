@@ -1,0 +1,46 @@
+# Settings for the Synthea module
+module:
+  name:                     # (optional) string, defaults to the camelcase name of the module folder
+  assign_to_attribute:      # (optional) string, defaults to the lowercase name of the module folder
+  reason: asthma_condition                  # (optional) string, references a previous ConditionOnset state
+  as_needed: true          # boolean, whether the prescription is as needed
+  chronic: true            # boolean, whether the prescription is chronic
+  refills: 0                # integer, number of refills
+
+# Settings for the RxClass search to include/exclude
+# *** At least one RxClass include or RXCUI include is required ***
+# NOTE: you can include/exclude multiple class_id/relationship pairs
+# RxClass options - see https://mor.nlm.nih.gov/RxClass/
+rxclass:
+  include:
+        # - class_id: 
+        #   relationship: 
+  exclude:
+        # - class_id:
+        #   relationship:
+
+# Settings for individual RXCUIs to include/exclude
+# *** At least one RxClass include or RXCUI include is required ***
+# NOTE: you can include/exclude multiple RXCUIs
+# You must enclose RXCUIs in quotes - example: '435'
+# RXCUI options - see the Ingredient section in https://mor.nlm.nih.gov/RxNav/
+# Dose form options - see https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html
+rxcui:
+  include:
+        - '435'
+        - '237159'
+  exclude:
+        # - 
+ingredient_tty_filter: IN     # (optional) string, options are IN or MIN
+dose_form_filter:           # (optional) list, see dose form options above
+    - Metered Dose Inhaler
+    - Inhalation Solution
+
+# Settings for the MEPS population
+meps:
+  age_ranges:               # (optional) defaults to MDT defaults
+        # -
+  demographic_distribution_flags:
+    age: false               # boolean, whether to break up distributions by age ranges
+    gender: true            # boolean, whether to break up distributions by gender
+    state: true             # boolean, whether to break up distributions by state of residence
