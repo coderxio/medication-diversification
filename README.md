@@ -16,10 +16,10 @@ cd medication-diversification
 python -m venv venv
 source venv/bin/activate
 ```
-Or on Windows:
+Or on Windows (using Git Bash):
 ```
 py -m venv venv
-venv\scripts\activate
+venv/scripts/activate
 ```
 > If using [VSCode](https://code.visualstudio.com/docs/python/python-tutorial#_install-and-use-packages) on Windows and getting error "Activate.ps1 is not digitally signed. You cannot run this script on the current system.", then you may need to temporarily change the PowerShell execution policy to allow scripts to run.  If this is the case, try `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then repeat step 2. 
 3. Install MDT as an installed editable package (note the `.` after `-e`).
@@ -82,6 +82,7 @@ rxclass:
   include:
     - class_id: R01AD
       relationship: ATC
+  exclude:
 ```
 
 *Medications that may treat hypothyroidism*
@@ -90,6 +91,7 @@ rxclass:
   include:
     - class_id: D007037
       relationship: may_treat
+  exclude:
 ```
 
 *HMG CoA reductase inhibitor medications AND medications that may prevent stroke*
@@ -100,6 +102,7 @@ rxclass:
       relationship: ATC
     - class_id: D020521
       relationship: may_prevent
+  exclude:
 ```
 
 *Medications that may prevent stroke EXCLUDING P2Y12 platelet inhibitors*
@@ -108,14 +111,14 @@ rxclass:
   include:
     - class_id: D020521
       relationship: may_prevent
-    exclude:
+  exclude:
     - class_id: N0000182142
       relationship: has_EPC
 ```
 
 ### RXCUI settings
 
-**NOTE:** At least one RxClass `include` or RXCUI `include` is required to run MDT.
+**NOTE:** At least one RxClass `include` or RXCUI `include` is required to run MDT. RXCUIs in the `include` and `exclude` sections must be surrounded by single quotation marks.
 
 | Setting | Type | Description |
 | ------- | ---- | ----------- |
@@ -131,6 +134,7 @@ rxclass:
 rxcui:
   include:
     - '8640'
+  exclude:
 ```
 
 *Albuterol AND levalbuterol medications*
@@ -139,6 +143,7 @@ rxcui:
   include:
     - '435'
     - '237159'
+  exclude:
 ```
 
 *Fluticasone / salmeterol (TTY = MIN, multiple ingredient) medications*
@@ -146,6 +151,7 @@ rxcui:
 rxcui:
   include:
     - '284635'
+  exclude:
 ```
 
 *Single ingredient inhalant product fluticasone medications only*
@@ -153,6 +159,7 @@ rxcui:
 rxcui:
   include:
     - '41126'
+  exclude:
 ingredient_tty_filter: IN
 dose_form_filter:
   - Inhalant Product
