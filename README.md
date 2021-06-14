@@ -58,7 +58,7 @@ This will create:
 ### Module settings
 | Setting | Type | Description |
 | ------- | ---- | ----------- |
-| `name` | `string` | The name of your module.  Defaults to the `camel_case` name of the module folder. Also used as `assign_to_attribute` property by default. |
+| `name` | `string` | **(optional)** The name of your module.  Defaults to the `camel_case` name of the module folder. Also used as `assign_to_attribute` property by default. |
 | `assign_to_attribute` | `string` | **(optional)** The name of the `"attribute"` to assign this state to. Defaults to `<<module_name>>`. |
 | `reason` | `string` | **(optional)** Either an `"attribute"` or a `"State_Name"` referencing a *previous* `ConditionOnset` state. |
 | `chronic` | `boolean` | **(optional)** If `true`, a medication is considered a chronic medication for a chronic condition. This will cause Synthea to reissue the same medication as a new prescription AND discontinue the old prescription at each wellness encounter. Defaults to `false`. |
@@ -193,73 +193,85 @@ To replace a MedicationOrder with one of our MDT submodules, replace the [Medica
 }
 ```
 
-Put the submodule JSON file in the [`/src/main/resources/modules/medications`](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/medications) folder.
+Put the submodule JSON file in the [`synthea/src/main/resources/modules/medications`](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/medications) folder.
 
-Put your transition table CSV files in the [`/src/main/resources/modules/lookup_tables`](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/lookup_tables) folder.
+Put your transition table CSV files in the [`synthea/src/main/resources/modules/lookup_tables`](https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules/lookup_tables) folder.
 
-**Example for hypothyroidism module:**
+**Example for asthma module:**
 
-Using the existing [hypothyroidism module](https://github.com/synthetichealth/synthea/blob/master/src/main/resources/modules/hypothyroidism.json) as an example...
+Using the existing [asthma module](https://github.com/synthetichealth/synthea/blob/master/src/main/resources/modules/asthma.json) as an example...
 
 Change this...
 
 ```
-    "Synthroid Medication Order": {
+...
+    "Prescribe_Maintenance_Inhaler": {
       "type": "MedicationOrder",
+      "reason": "asthma_condition",
       "codes": [
         {
           "system": "RxNorm",
-          "code": 966222,
-          "display": "Levothyroxine Sodium 0.075 MG Oral Tablet"
+          "code": "895994",
+          "display": "120 ACTUAT Fluticasone propionate 0.044 MG/ACTUAT Metered Dose Inhaler"
         }
       ],
-      "direct_transition": "end encounter",
       "prescription": {
-        "dosage": {
-          "amount": 1,
-          "frequency": 1,
-          "period": 60,
-          "unit": "days"
-        },
-        "duration": {
-          "quantity": 60,
-          "unit": "days"
-        },
-        "refills": 6
-      }
+        "as_needed": true
+      },
+      "direct_transition": "Prescribe_Emergency_Inhaler",
+      "chronic": true
     },
+...
 ```
 
 To this...
 
 ```
-    "Synthroid Medication Order": {
+...
+    "Prescribe_Maintenance_Inhaler": {
       "type": "CallSubmodule",
-      "submodule": "medications/hypothyroidism_medication",
-      "direct_transition": "end encounter"
+      "submodule": "medications/maintenance_inhaler",
+      "direct_transition": "Prescribe_Emergency_Inhaler"
     },
+...
 ```
 
 And make sure your submodule JSON and transition table CSVs are in the folder locations specified above.
-* Put a `hypothyroidism_medication.json` file in the `/src/main/resources/modules/medication` folder
-* Put all the transition table CSV files in the `/src/main/resources/modules/lookup_tables` folder
+- Put a `maintenance_inhaler.json` file in the `synthea/src/main/resources/modules/medication` folder.
+- Put all the transition table CSV files in the `synthea/src/main/resources/modules/lookup_tables` folder.
 
 See below for example file structure:
 
 ```
-src/
-├─ main/
-│  ├─ resources/
-│  │  ├─ modules/
-│  │  │  ├─ medication/
-│  │  │  │  ├─ hypothyroidism_medication.json
-│  │  │  │  ├─ ...
-│  │  │  ├─ lookup_tables/
-│  │  │  │  ├─ Hypothyroidism_ingredient_distrib.csv
-│  │  │  │  ├─ Hypothyroidism_product_levothyroxine_distrib.csv
-│  │  │  │  ├─ Hypothyroidism_product_liothyronine_distrib.csv
-│  │  │  │  ├─ Hypothyroidism_product_thyroid_USP_distrib.csv
-│  │  │  │  ├─ ...
-│  │  │  ├─ hypothyroidism.json
-│  │  │  ├─ ...
+synthea/
+├─ src/
+│  ├─ main/
+|  │  ├─ resources/
+|  │  │  ├─ modules/
+|  │  │  │  ├─ medication/
+|  │  │  │  │  ├─ maintenance_inhaler.json
+|  │  │  │  │  ├─ ...
+|  │  │  │  ├─ lookup_tables/
+|  │  │  │  │  ├─ maintenance_inhaler_ingredient_distribution.csv
+|  │  │  │  │  ├─ maintenance_inhaler_fluticasone_product_distribution.csv
+|  │  │  │  │  ├─ maintenance_inhaler_budesonide_product_distribution.csv
+|  │  │  │  │  ├─ maintenance_inhaler_beclomethasone_product_distribution.csv
+|  │  │  │  │  ├─ maintenance_inhaler_mometasone_product_distribution.csv
+|  │  │  │  │  ├─ ...
+|  │  │  │  ├─ asthma.json
+|  │  │  │  ├─ ...
 ```
+
+## Tips on testing MDT with Synthea
+
+- In Synthea, change setting in `synthea/src/main/resources/synthea.properties` to disable FHIR exporting and enable CSV exporting.
+```
+...
+exporter.fhir.export = false
+...
+exporter.csv.export = true
+...
+```
+- Each time you run Synthea, make sure you havea all Synthea CSV output files closed, or it will error out with a non-specific error message.
+- Run Synthea with a large enough sample size (at least 1000) to see a noticable impact from MDT.
+- Check the `medications.csv` output file for medications produced by your MDT-generated module.
