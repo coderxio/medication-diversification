@@ -495,11 +495,13 @@ def generate_module_json(meps_rxcui_ndc_df, dcp_demographictotal_ingred_remarks_
         '======================================================================',
         ' MEDICATION INGREDIENT TABLE TRANSITION                               ',
         '======================================================================',
+        'Ingredients in lookup table:',
+        '#  [ % pop ] Name',
+        '-- --------- ----',
     ]
-    ingredient_transition_state_remarks.append('Ingredients in lookup table:')
  
     for idx, row in dcp_demographictotal_ingred_remarks_df[['medication_ingredient_name', 'agg_percent_ingredient_patients']].iterrows():
-        ingredient_detail = ''+str(idx+1)+' . '+str(round(row['agg_percent_ingredient_patients']*100,2))+'% '+row['medication_ingredient_name']
+        ingredient_detail = ''+str(idx+1)+'. [ '+str(round(row['agg_percent_ingredient_patients']*100,2))+'% ] '+row['medication_ingredient_name']
         ingredient_transition_state_remarks.append(ingredient_detail)
 
     medication_ingredient_transition_name_list = dcp_demographictotal_ingred_remarks_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
@@ -528,16 +530,18 @@ def generate_module_json(meps_rxcui_ndc_df, dcp_demographictotal_ingred_remarks_
             '======================================================================',
             ' ' + ingredient_name.upper() + ' MEDICATION PRODUCT TABLE TRANSITION  ',
             '======================================================================',
+            'Products in lookup table:',
+            '#  [ % pop ] Name',
+            '-- --------- ----',
         ]
         filename = module_name + '_' + ingredient_name + product_distribution_suffix
         lookup_table_name = filename + '.csv'
         lookup_table_transition = []
 
-        product_transition_state_remarks.append('Products in lookup table:')
         medication_product_name_list = dcp_demographictotal_prod_remarks_dict[ingredient_name+'_df_remarks']['medication_product_name'].unique().tolist()
         medication_product_name_remarks_df = dcp_demographictotal_prod_remarks_dict[ingredient_name+'_df_remarks']
         for idx, row in medication_product_name_remarks_df.iterrows():
-            product_detail = ''+str(idx+1)+' . '+str(round(row['agg_percent_product_patients']*100,2))+'% '+row['medication_product_name']
+            product_detail = ''+str(idx+1)+'. [ '+str(round(row['agg_percent_product_patients']*100,2))+'% ] '+row['medication_product_name']
             product_transition_state_remarks.append(product_detail)
 
         medication_product_transition_name_list = dcp_demographictotal_prod_remarks_dict[ingredient_name]['medication_product_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
