@@ -60,7 +60,7 @@ dose_form_filter:           # (optional) list, see dose form options above
 
 # Settings for the MEPS population
 meps:
-    age_ranges:             # (optional) defaults to MDT defaults
+    age_ranges:            # (optional) list, defaults to mdt-settings.yaml default age ranges
         # -
     demographic_distribution_flags:
         age: true           # boolean, whether to break up distributions by age ranges

@@ -64,10 +64,10 @@ def module_build(args):
     meps_rxcui_ndc_df = get_meps_rxcui_ndc_df(rxcui_ndc_df, module_name, settings)
 
     #Generate distribution CSVs
-    generate_module_csv(meps_rxcui_ndc_df, module_name, settings)
+    dcp_demographictotal_ingred_df, dcp_demographictotal_prod_df = generate_module_csv(meps_rxcui_ndc_df, module_name, settings)
 
     #Generate JSON
-    generate_module_json(meps_rxcui_ndc_df, module_name, settings)
+    generate_module_json(meps_rxcui_ndc_df, dcp_demographictotal_ingred_df, dcp_demographictotal_prod_df, module_name, settings)
 
 
 def main():
