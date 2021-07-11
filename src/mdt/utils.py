@@ -335,7 +335,7 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
         dcp_demographictotal_ingred_remarks_df.drop_duplicates(inplace=True)
         dcp_demographictotal_ingred_remarks_df['agg_percent_ingredient_patients'] = dcp_demographictotal_ingred_remarks_df['percent_ingredient_patients']
 
-    # 6 TODO: change this column to medication_product_state_name(?)
+    # 6 
     dcp_dict['percent_ingredient_patients'] = dcp_demographictotal_ingred_df
     dcp_dict['percent_ingredient_patients']['medication_ingredient_transition_name'] = dcp_dict['percent_ingredient_patients']['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x))
     # 7
@@ -357,6 +357,7 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
 
     # Dictionary for storing remarks %s 
     dcp_demographictotal_prod_remarks_dict = {}
+    validation_df = pd.DataFrame({})
 
     for ingredient_name in medication_ingredient_list:
         filename = normalize_name(module_name + '_' + ingredient_name + product_distribution_suffix, 'lower')
@@ -389,7 +390,7 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
             dcp_demographictotal_prod_remarks_dict[ingredient_name+'_df_remarks'] = dcp_demographictotal_prod_remarks_dict[ingredient_name]
             dcp_demographictotal_prod_remarks_dict[ingredient_name+'_df_remarks']['agg_percent_product_patients'] = dcp_demographictotal_prod_remarks_dict[ingredient_name+'_df_remarks'][ingredient_name+'_percent_product_patients']
 
-        # 6 TODO: change this column to medication_product_state_name or medication_product_transition_name(?)
+        # 6
         dcp_dict['percent_product_patients'] = dcp_demographictotal_prod_df
         dcp_dict['percent_product_patients']['medication_product_transition_name'] = dcp_dict['percent_product_patients']['medication_product_name'].apply(lambda x: normalize_name(state_prefix + x))
         # 7
@@ -402,6 +403,17 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
         dcp_dict['percent_product_patients'].fillna(0, inplace=True)
         product_distribution_df = dcp_dict['percent_product_patients']
         output_df(product_distribution_df, output = 'csv', path = lookup_tables, filename = filename)
+
+        #Generates Validation df output CSV file (% distributions at the product level)
+        dcp_demographictotal_prod_df.rename(columns= {ingredient_name+'_percent_product_patients': 'percent_product_patients'}, inplace=True)
+        if len(groupby_demographic_variables) > 0:
+            validation_df_ingred = dcp_demographictotal_prod_df.merge(dcp_demographictotal_ingred_df, how='inner',on=['medication_ingredient_name']+groupby_demographic_variables)
+        else:
+            validation_df_ingred = dcp_demographictotal_prod_df.merge(dcp_demographictotal_ingred_df, how='inner',on='medication_ingredient_name')    
+        validation_df_ingred['validation_percent_product_patients'] = validation_df_ingred['percent_ingredient_patients']*validation_df_ingred['percent_product_patients']
+        validation_df = validation_df.append(validation_df_ingred)
+
+    output_df(validation_df, path = path_manager(Path.cwd() / module_name / 'log'), filename = 'validation_df_output')
     
     return dcp_demographictotal_ingred_remarks_df, dcp_demographictotal_prod_remarks_dict
     # return dcp_dict
