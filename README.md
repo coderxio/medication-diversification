@@ -269,6 +269,32 @@ synthea/
 |  │  │  │  ├─ ...
 ```
 
+Lastly, if the calling module (in this case, `asthma.json`) ends medications by a specific `State_Name` of a previous `MedicationOrder` state, you will need to change that `MedicationEnd` state to instead end a medication by `attribute`.  The reason for this is that our MDT JSON module generates different `MedicationOrder` state names for each potential prescribed product, but they all have the same `attribute`.
+
+Change this...
+
+```
+...
+    "Maintenance_Medication_End": {
+      "type": "MedicationEnd",
+      "medication_order": "Prescribe_Maintenance_Inhaler",
+      "direct_transition": "Emergency_Medication_End"
+    },
+...
+```
+
+To this...
+
+```
+...
+    "Maintenance_Medication_End": {
+      "type": "MedicationEnd",
+      "referenced_by_attribute": "maintenance_inhaler",
+      "direct_transition": "Emergency_Medication_End"
+    },
+...
+```
+
 ## Tips on testing MDT with Synthea
 
 - In Synthea, change setting in `synthea/src/main/resources/synthea.properties` to disable FHIR exporting and enable CSV exporting.

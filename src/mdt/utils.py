@@ -613,10 +613,13 @@ def generate_module_json(meps_rxcui_ndc_df, dcp_demographictotal_ingred_remarks_
         if idx == 0:
             medication_order_state_remarks_dict = {'remarks': medication_order_state_remarks}
             states_dict[state_name] = {**medication_order_state_remarks_dict, **states_dict[state_name]}
-
+        
+        # NOTE: commenting this out for final submission as it is still in testing
+        '''
         prescription_details = get_prescription_details(medication_product_rxcui)
         if prescription_details:
             states_dict[state_name]['prescription'] = {**states_dict[state_name]['prescription'], **prescription_details}
+        '''
 
     module_dict['states'] = states_dict
     
