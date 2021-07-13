@@ -76,6 +76,16 @@ This will create:
 
 **Examples:**
 
+**NOTE:** All yaml keys in the default generated settings file must be present even if the key value is empty, this will be adjusted in a future version of MDT to set appropriate default values if a key is omitted.
+```
+rxclass:
+  include:
+    - class_id: R01AD
+      relationship: ATC
+  exclude: <-- Required key, read as an empty array
+    # -
+```
+
 *Corticosteroid medications*
 ```
 rxclass:
