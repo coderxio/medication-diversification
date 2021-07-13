@@ -2,9 +2,9 @@
 module:
   name:                     # (optional) string, defaults to the camelcase name of the module folder
   assign_to_attribute:      # (optional) string, defaults to the lowercase name of the module folder
-  reason: asthma_condition                  # (optional) string, references a previous ConditionOnset state
-  as_needed: true          # boolean, whether the prescription is as needed
-  chronic: true            # boolean, whether the prescription is chronic
+  reason: asthma_condition  # (optional) string, references a previous ConditionOnset state
+  as_needed: true           # boolean, whether the prescription is as needed
+  chronic: true             # boolean, whether the prescription is chronic
   refills: 0                # integer, number of refills
 
 # Settings for the RxClass search to include/exclude
@@ -27,11 +27,12 @@ rxclass:
 # Dose form options - see https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix3.html
 rxcui:
   include:
+        # '435' = albuterol, '237159' = ipratropium
         - '435'
         - '237159'
   exclude:
         # - 
-ingredient_tty_filter: IN     # (optional) string, options are IN or MIN
+ingredient_tty_filter: IN   # (optional) string, options are IN or MIN
 dose_form_filter:           # (optional) list, see dose form options above
     - Metered Dose Inhaler
     - Inhalation Solution
@@ -39,8 +40,9 @@ dose_form_filter:           # (optional) list, see dose form options above
 # Settings for the MEPS population
 meps:
   age_ranges:               # (optional) defaults to MDT defaults
-        # -
+        - 0-5
+        #- 6-103
   demographic_distribution_flags:
-    age: false               # boolean, whether to break up distributions by age ranges
-    gender: true            # boolean, whether to break up distributions by gender
-    state: true             # boolean, whether to break up distributions by state of residence
+    age: true               # boolean, whether to break up distributions by age ranges
+    gender: false           # boolean, whether to break up distributions by gender
+    state: false            # boolean, whether to break up distributions by state of residence
