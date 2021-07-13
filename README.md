@@ -55,6 +55,8 @@ This will create:
 
 ## User-defined settings
 
+Pre-built module settings file examples available in the [docs/examples](https://github.com/coderxio/medication-diversification/tree/main/docs/examples) folder.
+
 ### Module settings
 | Setting | Type | Description |
 | ------- | ---- | ----------- |
@@ -318,3 +320,7 @@ exporter.csv.export = true
 - Each time you run Synthea, make sure you havea all Synthea CSV output files closed, or it will error out with a non-specific error message.
 - Run Synthea with a large enough sample size (at least 1000) to see a noticable impact from MDT.
 - Check the `medications.csv` output file for medications produced by your MDT-generated module.
+
+## Validation
+
+Please see [docs/validation](https://github.com/coderxio/medication-diversification/tree/main/docs/validation) for a python notebook which can be used to validate Synthea + MDT patient populations against MEPS patient populations.
