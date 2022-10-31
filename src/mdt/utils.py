@@ -517,7 +517,7 @@ def generate_module_json(meps_rxcui_ndc_df, dcp_demographictotal_ingred_remarks_
         ingredient_transition_state_remarks.append(ingredient_detail)
 
     medication_ingredient_transition_name_list = dcp_demographictotal_ingred_remarks_df['medication_ingredient_name'].apply(lambda x: normalize_name(state_prefix + x)).unique().tolist()
-    filename = module_name + ingredient_distribution_suffix
+    filename = normalize_name(module_name + ingredient_distribution_suffix, 'lower')
     lookup_table_name = filename + '.csv'
     lookup_table_transition = []
     for idx, transition in enumerate(medication_ingredient_transition_name_list):
@@ -546,7 +546,7 @@ def generate_module_json(meps_rxcui_ndc_df, dcp_demographictotal_ingred_remarks_
             '#  [ % pop ] Name',
             '-- --------- ----',
         ]
-        filename = module_name + '_' + ingredient_name + product_distribution_suffix
+        filename = normalize_name(module_name + '_' + ingredient_name + product_distribution_suffix, 'lower')
         lookup_table_name = filename + '.csv'
         lookup_table_transition = []
 
