@@ -411,7 +411,7 @@ def generate_module_csv(meps_rxcui_ndc_df, module_name, settings, path=Path.cwd(
         else:
             validation_df_ingred = dcp_demographictotal_prod_df.merge(dcp_demographictotal_ingred_df, how='inner',on='medication_ingredient_name')    
         validation_df_ingred['validation_percent_product_patients'] = validation_df_ingred['percent_ingredient_patients']*validation_df_ingred['percent_product_patients']
-        validation_df = validation_df.append(validation_df_ingred)
+        validation_df = pd.concat([validation_df, validation_df_ingred])
 
     output_df(validation_df, path = path_manager(Path.cwd() / module_name / 'log'), filename = 'validation_df_output')
     
